@@ -10,6 +10,7 @@
 //Ver 1.6 增加了/TRANSPARENTBLT选项
 //Ver 1.7 不区分大小写，增加了/l批量处理选项，修复/d选项的BUG
 //Ver 1.8 /l支持双缓冲
+//Ver 1.9 修复/l选项的BUG和内存泄露，修复/s选项的BUG
 
 #include <fstream>
 #include <windows.h>
@@ -19,6 +20,9 @@
 
 using namespace std;
 
+typedef HWND (WINAPI *PROCGETCONSOLEWINDOW)();
+PROCGETCONSOLEWINDOW GetConsoleWindow;
+
 void Draw(HDC hDC,HDC hDCMem,int imx,int imy,BITMAP bi,const char *dwRop);
 
 int main(int argc, char *argv[])
@@ -26,7 +30,7 @@ int main(int argc, char *argv[])
 	if (argc == 2 && _stricmp(argv[1], "/?") == 0 || argc == 1)
 	{
 		printf("控制台显示图片\n"
-			"Ver 1.8 By Byaidu\n\n"
+			"Ver 1.9 By Byaidu\n\n"
 			"image [/d] [/s] [/l listfile] [bmpfile] [X] [Y] [Width] [Height] [/TRANSPARENTBLT] [/BLACKNESS] [/DSTINVERT] [/MERGECOPY] [/MERGEPAINT] [/NOTSRCCOPY] [/NOTSRCERASE] [/PATCOPY] [/PATPAINT] [/PATINVERT] [/SRCAND] [/SRCCOPY] [/SRCERASE] [/SRCINVERT] [/SRCPAINT] [/WHITENESS] \n\n"
 			"\t/d\t清空当前窗口中显示的图片\n"
 			"\t/s\t清空当前窗口指定大小中显示的图片\n"
@@ -61,9 +65,36 @@ int main(int argc, char *argv[])
 			"\timage /s 10 10 100 100\n");
 		return 0;
 	}
+	HMODULE hKernel32 = GetModuleHandle("kernel32");
+	GetConsoleWindow = (PROCGETCONSOLEWINDOW)GetProcAddress(hKernel32,"GetConsoleWindow");
 	HWND hCMD = GetConsoleWindow();
 	HDC hDC = GetDC(hCMD);
+	if (argc == 2 && _stricmp(argv[1], "/d") == 0)
+	{
+		InvalidateRect(hCMD, NULL, true);
+		ReleaseDC(hCMD, hDC);
+		return 0;
+	}
+	if (argc == 6 && _stricmp(argv[1], "/s") == 0)
+	{
+		unsigned long colorlist[]={RGB(0,0,0),RGB(0,0,128),RGB(0,128,0),RGB(0,128,128),RGB(128,0,0),RGB(128,0,128),RGB(128,128,0),RGB(192,192,192),RGB(128,128,128),RGB(0,0,255),RGB(0,255,0),RGB(0,255,255),RGB(255,0,0),RGB(255,0,255),RGB(255,255,0),RGB(255,255,255)};
+		HANDLE hStdout;
+		CONSOLE_SCREEN_BUFFER_INFO csbiInfo;
+		hStdout = GetStdHandle(STD_OUTPUT_HANDLE); 
+		GetConsoleScreenBufferInfo(hStdout, &csbiInfo);
+		int imx = atoi(argv[2]);
+		int imy = atoi(argv[3]);
+		int imw = atoi(argv[4]);
+		int imh = atoi(argv[5]);
+		tagRECT rect={imx, imy, imx+imw, imy+imh};
+		HBRUSH brush=CreateSolidBrush(colorlist[csbiInfo.wAttributes>>4]);
+		FillRect(hDC, &rect,brush);
+		ReleaseDC(hCMD, hDC);
+		return 0;
+	}
+	//////////////////////////////////////图像操作////////////////////////////////////////////
 	HDC hDCMem = CreateCompatibleDC(hDC);//载入图像
+	HBITMAP hBitmap;
 	if (argc == 3 && _stricmp(argv[1], "/l") == 0)
 	{
 		RECT rc; 
@@ -91,38 +122,30 @@ int main(int argc, char *argv[])
 				istr>>sTmp[i];
 				i++;
 			}
-			HBITMAP hBitmap;
 			hBitmap = (HBITMAP)LoadImageA(NULL, (char*)sTmp[0].data(), IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION);
 			SelectObject(hDCMem, hBitmap);
 			BITMAP bi = {0};
 			GetObject(hBitmap, sizeof(BITMAP), &bi);
-			if (i == 3) BitBlt(hDCBuffer,atoi(sTmp[1].c_str()),atoi(sTmp[2].c_str()),bi.bmWidth,bi.bmHeight,hDCMem,0,0,SRCCOPY);
+			if (i == 3) Draw(hDCBuffer,hDCMem,atoi(sTmp[1].c_str()),atoi(sTmp[2].c_str()),bi,"/SRCCOPY");
 			if (i == 4) Draw(hDCBuffer,hDCMem,atoi(sTmp[1].c_str()),atoi(sTmp[2].c_str()),bi,(char*)sTmp[3].data());
 		}
 		in.close();
 		BitBlt(hDC, 0, 0, width, height, hDCBuffer, 0, 0, SRCCOPY);
+		DeleteObject(hBitmap);
+		DeleteObject(hBitmapBuffer);
+		DeleteObject(hBitmapX);
+		DeleteDC(hDCBuffer);
+		DeleteDC(hDCMem);
+		ReleaseDC(hCMD, hDC);
 		return 0;
 	}
-	if (argc == 2 && _stricmp(argv[1], "/d") == 0)
-	{
-		InvalidateRect(hCMD, NULL, true);
-		return 0;
-	}
-	int imx = atoi(argv[2]);
-	int imy = atoi(argv[3]);
-	if (argc == 6 && _stricmp(argv[1], "/s") == 0)
-	{
-		int imw = atoi(argv[4]);
-		int imh = atoi(argv[5]);
-		BitBlt(hDC, imx, imy, imw, imh, NULL, 0, 0, BLACKNESS);
-		return 0;
-	}
-	HBITMAP hBitmap;
 	hBitmap = (HBITMAP)LoadImageA(NULL, argv[1], IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION);
 	SelectObject(hDCMem, hBitmap);
 	BITMAP bi = {0};
 	GetObject(hBitmap, sizeof(BITMAP), &bi);
-	if (argc == 4) Draw(hDC,hDCMem,imx,imy,bi,"SRCCOPY");
+	int imx = atoi(argv[2]);
+	int imy = atoi(argv[3]);
+	if (argc == 4) Draw(hDC,hDCMem,imx,imy,bi,"/SRCCOPY");
 	if (argc == 5) Draw(hDC,hDCMem,imx,imy,bi,argv[4]);
 	DeleteObject(hBitmap);
 	DeleteDC(hDCMem);
@@ -134,7 +157,7 @@ void Draw(HDC hDC,HDC hDCMem,int imx,int imy,BITMAP bi,const char *dwRop)
 {
 	if (_stricmp(dwRop, "/TRANSPARENTBLT") == 0)
 	{
-		GdiTransparentBlt(hDC, imx, imy, bi.bmWidth, bi.bmHeight, hDCMem, 0, 0, bi.bmWidth, bi.bmHeight, RGB(255,255,255));
+		TransparentBlt(hDC, imx, imy, bi.bmWidth, bi.bmHeight, hDCMem, 0, 0, bi.bmWidth, bi.bmHeight, RGB(255,255,255));
 	}
 	if (_stricmp(dwRop, "/BLACKNESS") == 0)
 	{
