@@ -1,4 +1,3 @@
-
 # image
 控制台显示图片
 Ver 2.0 By Byaidu
@@ -18,4 +17,5 @@ image [/d] [/s] [/l listfile] [bmpfile] [X] [Y] [Width] [Height] [/TRANSPARENTBL
         /SRCCOPY        将图片直接拷贝到目标矩形区域
 
 若直接使用image abc.bmp 10 50 不加后面的参数，默认使用/SRCCOPY
+
 注意，X,Y所构成的坐标由0起算
