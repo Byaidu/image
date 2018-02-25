@@ -29,6 +29,6 @@ import handle tag	通过句柄将另一个控制台的画布cmd映射到此控�
 
 getpix tag x y		将画布tag上x,y位置的rgb值存储到变量image
 
-getpix tag x y r g b	设置画布tag上x,y位置的rgb值
+setpix tag x y r g b	设置画布tag上x,y位置的rgb值
 
 ![](https://images2018.cnblogs.com/blog/1123683/201802/1123683-20180223134856925-1663767861.jpg)
