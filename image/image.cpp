@@ -140,7 +140,26 @@ void image(wchar_t *CmdLine)
 	}
 	match(0, "help")
 	{
-		printf("image 3.0 by byaidu\n");
+		printf(
+			"image\n"
+			"控制台显示图片 Ver 3.0 by Byaidu\n"
+			"\n"
+			"help\t\t\t显示帮助\n"
+			"load file [tag]\t\t申请一块画布tag，并加载图片到画布tag\n"
+			"unload tag\t\t删除画布tag\n"
+			"save file tag\t\t将画布tag的内容存储到file中\n"
+			"target tag\t\t切换当前绘图目标为画布tag\n"
+			"buffer tag\t\t申请一块画布tag\n"
+			"stretch tag w h\t\t将画布tag缩放到w*h的大小\n"
+			"cls\t\t\t清空画布cmd的内容\n"
+			"rotate tag degree\t将画布tag顺时针旋转degree度\n"
+			"draw tag x y [trans|and]将画布tag绘制到当前绘图目标的x,y位置上\n"
+			"info tag\t\t将画布tag的宽和高存储到变量image\n"
+			"export\t\t\t将画布cmd的句柄存储到变量image\n"
+			"import handle tag\t通过句柄将另一个控制台的画布cmd映射到此控制台的画布tag\n"
+			"getpix tag x y\t\t将画布tag上x,y位置的rgb值存储到变量image\n"
+			"setpix tag x y r g b\t设置画布tag上x,y位置的rgb值\n"
+		);
 	}
 	match(0, "load") //加载资源到资源映射表
 	{
@@ -293,12 +312,12 @@ void image(wchar_t *CmdLine)
 	}
 	match(0, "import")
 	{
-		char *tag = argv[1];
+		char *tag = argv[2];
 		//销毁原来的资源，防止内存泄漏
 		if (resmap.count(tag)) delres(tag);
 		imageres hRes;
 		//获取cmd大小以及绘图句柄
-		HWND hCMD2 = (HWND)atoi(argv[2]);
+		HWND hCMD2 = (HWND)atoi(argv[1]);
 		HDC hDC = GetDC(hCMD2);
 		DEVMODE dm;
 		dm.dmSize = sizeof(DEVMODE);
@@ -317,7 +336,7 @@ void image(wchar_t *CmdLine)
 	{
 		imageres * hRes = getres(argv[1]);
 		COLORREF color=GetPixel(hRes->dc, atoi(argv[2]), atoi(argv[3]));
-		sprintf_s(info, sizeof(info), "%d,%d,%d", GetRValue(color), GetGValue(color), GetBValue(color));
+		sprintf_s(info, sizeof(info), "%d %d %d", GetRValue(color), GetGValue(color), GetBValue(color));
 		SetEnvironmentVariableA("image", info);
 	}
 	match(0, "setpix")
