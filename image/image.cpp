@@ -101,7 +101,7 @@ void Init_image() //初始化
 	hRes.h = (int)ceil(scale*(rc.bottom - rc.top));
 	resmap["cmd"] = hRes; //把cmd作为资源添加到调用表中
 	hTarget = &resmap["cmd"];//getres("cmd"); //绘图默认指向cmd
-							 //获取desktop大小以及绘图句柄
+	//获取desktop大小以及绘图句柄
 	hDC = GetDC(nullptr);
 	hRes.dc = hDC;
 	hRes.w = dm.dmPelsWidth;
@@ -127,21 +127,22 @@ void delres(char *tag) //销毁原来的资源，防止内存泄漏
 	resmap.erase(tag);
 	return;
 }
-HBITMAP copyhbitmap(imageres *hRes)
+//不能用SelectObject获取cmd等特殊资源的hbitmap，所以要复制一份出来，注意使用之后要DeleteObject
+HBITMAP copyhbitmap(imageres *hSrc)
 {
-	imageres hRes2;
-	hRes2.dc = CreateCompatibleDC(hRes->dc);
-	HBITMAP hBitmap2 = CreateCompatibleBitmap(hRes->dc, hRes->w, hRes->h);
-	hRes2.oldbmp = (HBITMAP)SelectObject(hRes2.dc, hBitmap2);
-	BitBlt(hRes2.dc, 0, 0, hRes->w, hRes->h, hRes->dc, 0, 0, SRCCOPY);
-	SelectObject(hRes2.dc, hRes2.oldbmp);
-	DeleteDC(hRes2.dc);
-	return hBitmap2;
+	imageres hRes;
+	hRes.dc = CreateCompatibleDC(hSrc->dc);
+	HBITMAP hBitmap = CreateCompatibleBitmap(hSrc->dc, hSrc->w, hSrc->h);
+	hRes.oldbmp = (HBITMAP)SelectObject(hRes.dc, hBitmap);
+	BitBlt(hRes.dc, 0, 0, hSrc->w, hSrc->h, hSrc->dc, 0, 0, SRCCOPY);
+	SelectObject(hRes.dc, hRes.oldbmp);
+	DeleteDC(hRes.dc);
+	return hBitmap;
 }
 void rotateres()
 {
 	imageres * hRes = getres(argv[1]);
-	HBITMAP hSrc = (HBITMAP)SelectObject(hRes->dc, hRes->oldbmp);
+	HBITMAP hSrc = copyhbitmap(hRes);
 	Rect rect(0, 0, hRes->w, hRes->h);
 	//用于加载旧位图
 	Bitmap bitmap(hSrc, nullptr);
@@ -175,28 +176,31 @@ void rotateres()
 		}
 	bitmap.UnlockBits(&bitmapData);
 	bitmap2.UnlockBits(&bitmapData2);
-	//替换旧资源
+	//复制临时资源到目标资源
+	HDC hDCMem = CreateCompatibleDC(hRes->dc);
 	HBITMAP hBitmap;
 	bitmap2.GetHBITMAP(0, &hBitmap);
-	SelectObject(hRes->dc, hBitmap);
-	//销毁原来的资源
+	HBITMAP oldbmp = (HBITMAP)SelectObject(hDCMem, hBitmap);
+	BitBlt(hRes->dc, 0, 0, hRes->w, hRes->h, hDCMem, 0, 0, SRCCOPY);
+	//销毁临时复制的资源
 	DeleteObject(hSrc);
+	SelectObject(hDCMem, oldbmp);
+	DeleteObject(hBitmap);
+	DeleteDC(hDCMem);
 }
 void alphares()
 {
 	double alpha = (double)atoi(argv[5])/100;
 	//用于加载源位图
 	imageres * hRes = getres(argv[1]);
-	HBITMAP hSrc = (HBITMAP)SelectObject(hRes->dc, hRes->oldbmp);
+	HBITMAP hSrc = copyhbitmap(hRes);
 	Rect rect(0, 0, hRes->w, hRes->h);
 	Bitmap bitmap(hSrc, nullptr);
 	BitmapData bitmapData;
 	bitmap.LockBits(&rect, ImageLockModeRead, PixelFormat24bppRGB, &bitmapData);
 	byte* pixels = (byte*)bitmapData.Scan0;
 	//用于加载目标位图
-	//这里特殊处理一下，因为如果目标是cmd会导致不能直接通过SelectObject获取到hSrc，所以先复制一次
-	//imageres * hRes2 = &copyres(hTarget);
-	//HBITMAP hSrc2 = (HBITMAP)SelectObject(hRes2->dc, hRes2->oldbmp);
+	//不能SelectObject获取cmd等特殊资源的hbitmap，所以要复制一份出来，注意使用之后要DeleteObject
 	HBITMAP hSrc2 = copyhbitmap(hTarget);
 	Rect rect2(0, 0, hTarget->w, hTarget->h);
 	Bitmap bitmap2(hSrc2, nullptr);
@@ -220,7 +224,7 @@ void alphares()
 				for (int k = 0; k < 3; k++)
 					pixels3[j*bitmapData3.Stride + 3 * i + k] =
 					(byte)((1 - alpha) * pixels2[j*bitmapData2.Stride + 3 * i + k] +
-					alpha * pixels[y*bitmapData.Stride + 3 * x + k]);
+						alpha * pixels[y*bitmapData.Stride + 3 * x + k]);
 			}
 			else
 			{
@@ -238,12 +242,13 @@ void alphares()
 	HBITMAP oldbmp = (HBITMAP)SelectObject(hDCMem, hBitmap);
 	BitBlt(hTarget->dc, 0, 0, hTarget->w, hTarget->h, hDCMem, 0, 0, SRCCOPY);
 	//销毁临时复制的资源
+	DeleteObject(hSrc);
 	DeleteObject(hSrc2);
-	//DeleteDC(hRes2->dc);
 	SelectObject(hDCMem, oldbmp);
 	DeleteObject(hBitmap);
 	DeleteDC(hDCMem);
 }
+
 
 void image(wchar_t *CmdLine)
 {
@@ -296,16 +301,14 @@ void image(wchar_t *CmdLine)
 	match(0, "save") //保存为图片
 	{
 		imageres * hRes = getres(argv[2]);
-		HBITMAP hSrc = (HBITMAP)SelectObject(hRes->dc, hRes->oldbmp);
-		SelectObject(hRes->dc, hSrc);
+		HBITMAP hSrc = copyhbitmap(hRes);
 		Rect rect(0, 0, hRes->w, hRes->h);
-		//用于加载旧位图
-		Bitmap* bitmap = new Bitmap(hSrc, nullptr);
+		Bitmap bitmap(hSrc, nullptr);
 		//https://stackoverflow.com/questions/1584202/gdi-bitmap-save-problem
 		CLSID Clsid;
 		CLSIDFromString(L"{557cf400-1a04-11d3-9a73-0000f81ef32e}", &Clsid);
-		bitmap->Save(argvw[1], &Clsid, nullptr);
-		delete bitmap;
+		bitmap.Save(argvw[1], &Clsid, nullptr);
+		DeleteObject(hSrc);
 	}
 	match(0, "target") //更改绘图目标
 	{
@@ -326,7 +329,7 @@ void image(wchar_t *CmdLine)
 		//把buffer添加到资源调用表中
 		resmap[tag] = hRes;
 	}
-	match(0, "stretch") //缩放
+	match(0, "resize") //缩放
 	{
 		imageres * hRes = getres(argv[1]);
 		HDC hDCMem = CreateCompatibleDC(hRes->dc);
@@ -353,6 +356,7 @@ void image(wchar_t *CmdLine)
 	}
 	match(0, "draw")
 	{
+		//WARNING：只有draw，cls，
 		//直接在目标上绘图
 		imageres * hRes = getres(argv[1]);
 		if (argc == 4)
