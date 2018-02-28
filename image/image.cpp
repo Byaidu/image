@@ -17,6 +17,7 @@ using namespace Gdiplus;
 #define wcsicmp _wcsicmp
 #define stricmp _stricmp
 #define match(x,y) if (!stricmp(argv[x],y))
+#define matchclsid(x) if (!stricmp(&argv[1][strlen(argv[1]) - 3], x))
 #pragma comment(lib,"msimg32.lib")
 #pragma comment(lib,"GdiPlus.lib")
 
@@ -306,7 +307,9 @@ void image(wchar_t *CmdLine)
 		Bitmap bitmap(hSrc, nullptr);
 		//https://stackoverflow.com/questions/1584202/gdi-bitmap-save-problem
 		CLSID Clsid;
-		CLSIDFromString(L"{557cf400-1a04-11d3-9a73-0000f81ef32e}", &Clsid);
+		matchclsid("bmp") CLSIDFromString(L"{557cf400-1a04-11d3-9a73-0000f81ef32e}", &Clsid);
+		matchclsid("jpg") CLSIDFromString(L"{557cf401-1a04-11d3-9a73-0000f81ef32e}", &Clsid);
+		matchclsid("png") CLSIDFromString(L"{557cf406-1a04-11d3-9a73-0000f81ef32e}", &Clsid);
 		bitmap.Save(argvw[1], &Clsid, nullptr);
 		DeleteObject(hSrc);
 	}
@@ -356,7 +359,6 @@ void image(wchar_t *CmdLine)
 	}
 	match(0, "draw")
 	{
-		//WARNING：只有draw，cls，
 		//直接在目标上绘图
 		imageres * hRes = getres(argv[1]);
 		if (argc == 4)
