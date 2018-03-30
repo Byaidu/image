@@ -50,6 +50,7 @@ map<string, imageres> resmap; //资源映射表
 HWND hCMD;//控制台窗口句柄
 char argv[10][100], info[50];
 int drawdelay = 0;
+double scale;//缩放比校正
 
 void image(wchar_t *); //主函数
 void Init_image(); //初始化
@@ -94,12 +95,12 @@ void Init_image() //初始化
 	EnumDisplaySettings(nullptr, ENUM_CURRENT_SETTINGS, &dm);
 	int ax = dm.dmPelsWidth;
 	int bx = GetSystemMetrics(SM_CXSCREEN);
-	double scale = (double)ax / bx;//校正缩放比
+	scale = (double)ax / bx;//校正缩放比
 	RECT rc;
 	GetClientRect(hCMD, &rc);
 	hRes.dc = hDC;
-	hRes.w = (int)ceil(scale*(rc.right - rc.left));
-	hRes.h = (int)ceil(scale*(rc.bottom - rc.top));
+	hRes.w = int(scale*(rc.right - rc.left));
+	hRes.h = int(scale*(rc.bottom - rc.top));
 	resmap["cmd"] = hRes; //把cmd作为资源添加到调用表中
 	hTarget = &resmap["cmd"];//getres("cmd"); //绘图默认指向cmd
 	//获取desktop大小以及绘图句柄
@@ -334,6 +335,24 @@ void image(wchar_t *CmdLine)
 	}
 	match(0, "resize") //缩放
 	{
+		match(1,"cmd")
+		{
+			RECT rc,rc2;
+			SetScrollRange(hCMD, 0, 0, 0, 1);
+			SetScrollRange(hCMD, 1, 0, 0, 1);
+			GetClientRect(hCMD, &rc);
+			GetWindowRect(hCMD, &rc2);
+			int w = (rc2.right - rc2.left) - (rc.right - rc.left) + int((atoi(argv[2])) / scale);
+			int h = (rc2.bottom - rc2.top) - (rc.bottom - rc.top) + int((atoi(argv[2])) / scale);
+			printf("scale:%f\n", scale);
+			printf("C:%dx%d\n", rc.right - rc.left, rc.bottom - rc.top);
+			printf("W:%dx%d\n", rc2.right - rc2.left, rc2.bottom - rc2.top);
+			MoveWindow(hCMD, rc2.left, rc2.top, w, h, 0);
+			Sleep(10);
+			SetScrollRange(hCMD, 0, 0, 0, 1);
+			SetScrollRange(hCMD, 1, 0, 0, 1);
+			return;
+		}
 		imageres * hRes = getres(argv[1]);
 		HDC hDCMem = CreateCompatibleDC(hRes->dc);
 		HBITMAP hBitmap = CreateCompatibleBitmap(hRes->dc, atoi(argv[2]), atoi(argv[3]));
