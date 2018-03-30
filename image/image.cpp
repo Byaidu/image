@@ -344,9 +344,9 @@ void image(wchar_t *CmdLine)
 			GetWindowRect(hCMD, &rc2);
 			int w = (rc2.right - rc2.left) - (rc.right - rc.left) + int((atoi(argv[2])) / scale);
 			int h = (rc2.bottom - rc2.top) - (rc.bottom - rc.top) + int((atoi(argv[2])) / scale);
-			printf("scale:%f\n", scale);
-			printf("C:%dx%d\n", rc.right - rc.left, rc.bottom - rc.top);
-			printf("W:%dx%d\n", rc2.right - rc2.left, rc2.bottom - rc2.top);
+			//printf("scale:%f\n", scale);
+			//printf("C:%dx%d\n", rc.right - rc.left, rc.bottom - rc.top);
+			//printf("W:%dx%d\n", rc2.right - rc2.left, rc2.bottom - rc2.top);
 			MoveWindow(hCMD, rc2.left, rc2.top, w, h, 0);
 			Sleep(10);
 			SetScrollRange(hCMD, 0, 0, 0, 1);
