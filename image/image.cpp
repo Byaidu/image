@@ -351,22 +351,22 @@ void image(wchar_t *CmdLine)
 			Sleep(10);
 			SetScrollRange(hCMD, 0, 0, 0, 1);
 			SetScrollRange(hCMD, 1, 0, 0, 1);
-			return;
+		}else{
+			imageres * hRes = getres(argv[1]);
+			HDC hDCMem = CreateCompatibleDC(hRes->dc);
+			HBITMAP hBitmap = CreateCompatibleBitmap(hRes->dc, atoi(argv[2]), atoi(argv[3]));
+			HBITMAP oldbmp = (HBITMAP)SelectObject(hDCMem, hBitmap);
+			StretchBlt(hDCMem, 0, 0, atoi(argv[2]), atoi(argv[3]), hRes->dc, 0, 0, hRes->w, hRes->h, SRCCOPY);
+			//销毁原来的资源，防止内存泄漏
+			HBITMAP bmp = (HBITMAP)SelectObject(hRes->dc, hRes->oldbmp);
+			DeleteObject(bmp);
+			DeleteDC(hRes->dc);
+			//替换原来的资源
+			hRes->oldbmp = oldbmp;
+			hRes->dc = hDCMem;
+			hRes->w = atoi(argv[2]);
+			hRes->h = atoi(argv[3]);
 		}
-		imageres * hRes = getres(argv[1]);
-		HDC hDCMem = CreateCompatibleDC(hRes->dc);
-		HBITMAP hBitmap = CreateCompatibleBitmap(hRes->dc, atoi(argv[2]), atoi(argv[3]));
-		HBITMAP oldbmp = (HBITMAP)SelectObject(hDCMem, hBitmap);
-		StretchBlt(hDCMem, 0, 0, atoi(argv[2]), atoi(argv[3]), hRes->dc, 0, 0, hRes->w, hRes->h, SRCCOPY);
-		//销毁原来的资源，防止内存泄漏
-		HBITMAP bmp = (HBITMAP)SelectObject(hRes->dc,hRes->oldbmp);
-		DeleteObject(bmp);
-		DeleteDC(hRes->dc);
-		//替换原来的资源
-		hRes->oldbmp = oldbmp;
-		hRes->dc = hDCMem;
-		hRes->w = atoi(argv[2]);
-		hRes->h = atoi(argv[3]);
 	}
 	match(0, "cls") //清屏
 	{
