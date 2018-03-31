@@ -15,9 +15,8 @@ using namespace Gdiplus;
 
 #define DLL_EXPORT __declspec(dllexport)
 #define wcsicmp _wcsicmp
-#define stricmp _stricmp
-#define match(x,y) if (!stricmp(argv[x],y))
-#define matchclsid(x) if (!stricmp(&argv[1][strlen(argv[1]) - 3], x))
+#define match(x,y) if (!wcsicmp(argv[x],y))
+#define matchclsid(x) if (!wcsicmp(&argv[1][wcslen(argv[1]) - 3], x))
 #pragma comment(lib,"msimg32.lib")
 #pragma comment(lib,"GdiPlus.lib")
 
@@ -26,18 +25,14 @@ struct imageres { //资源结构体
 	HBITMAP oldbmp;
 	int w, h;
 	imageres() {};
-	imageres(char *file) //初始化结构体，并加载资源
+	imageres(wchar_t *file) //初始化结构体，并加载资源
 	{
-		wchar_t wfile[100];
-		size_t converted = 0;
-		mbstowcs_s(&converted, wfile, file, strlen(file));
-
 		BITMAP bi;
 		//为了防止多个hbmp同时用一个hdc发生冲突，所以这里给所有的hbmp分配各自的hdc
 		dc = CreateCompatibleDC(nullptr);
 		//HBITMAP bmp = (HBITMAP)LoadImageA(nullptr, file, IMAGE_BITMAP, 0, 0, LR_LOADFROMFILE | LR_CREATEDIBSECTION);
 		HBITMAP bmp;
-		Bitmap *bm = new Bitmap(wfile);
+		Bitmap *bm = new Bitmap(file);
 		bm->GetHBITMAP(0, &bmp);
 		delete bm;
 		oldbmp = (HBITMAP)SelectObject(dc, bmp);
@@ -46,9 +41,9 @@ struct imageres { //资源结构体
 		h = bi.bmHeight;
 	}
 }*hTarget;
-map<string, imageres> resmap; //资源映射表
+map<wstring, imageres> resmap; //资源映射表
 HWND hCMD;//控制台窗口句柄
-char argv[10][100], info[50];
+wchar_t **argv,info[50];
 int drawdelay = 0;
 double scale;//缩放比校正
 
@@ -101,19 +96,19 @@ void Init_image() //初始化
 	hRes.dc = hDC;
 	hRes.w = int(scale*(rc.right - rc.left));
 	hRes.h = int(scale*(rc.bottom - rc.top));
-	resmap["cmd"] = hRes; //把cmd作为资源添加到调用表中
-	hTarget = &resmap["cmd"];//getres("cmd"); //绘图默认指向cmd
+	resmap[L"cmd"] = hRes; //把cmd作为资源添加到调用表中
+	hTarget = &resmap[L"cmd"];//getres("cmd"); //绘图默认指向cmd
 	//获取desktop大小以及绘图句柄
 	hDC = GetDC(nullptr);
 	hRes.dc = hDC;
 	hRes.w = dm.dmPelsWidth;
 	hRes.h = dm.dmPelsHeight;
-	resmap["desktop"] = hRes; //把desktop作为资源添加到调用表中
+	resmap[L"desktop"] = hRes; //把desktop作为资源添加到调用表中
 
 	TextOutA(hTarget->dc, 0, 0, 0, 0);//第一次使用TextOutA无效，大概是个bug
 	return;
 }
-imageres * getres(char *tag) //在资源映射表中查找资源
+imageres * getres(wchar_t *tag) //在资源映射表中查找资源
 {
 	if (!resmap.count(tag)) //如果在资源映射表中找不到资源，则先加载图片到资源映射表
 	{
@@ -122,7 +117,7 @@ imageres * getres(char *tag) //在资源映射表中查找资源
 	}
 	return &resmap[tag];
 }
-void delres(char *tag) //销毁原来的资源，防止内存泄漏
+void delres(wchar_t *tag) //销毁原来的资源，防止内存泄漏
 {
 	imageres * hRes = getres(tag);
 	HBITMAP bmp = (HBITMAP)SelectObject(hRes->dc, hRes->oldbmp);
@@ -160,7 +155,7 @@ void rotateres()
 	byte* pixels2 = (byte*)bitmapData2.Scan0;
 	//旋转
 	double pi = 3.1415926;
-	double angle = -(double)atoi(argv[2]) / 180 * pi;
+	double angle = -(double)_wtoi(argv[2]) / 180 * pi;
 	double sina = sin(angle), cosa = cos(angle);
 	int cx = hRes->w / 2, cy = hRes->h / 2;
 	for (int i = 0; i<hRes->w; i++)
@@ -194,7 +189,7 @@ void rotateres()
 }
 void alphares()
 {
-	double alpha = (double)atoi(argv[5])/100;
+	double alpha = (double)_wtoi(argv[5])/100;
 	//用于加载源位图
 	imageres * hRes = getres(argv[1]);
 	HBITMAP hSrc = copyhbitmap(hRes);
@@ -218,7 +213,7 @@ void alphares()
 	bitmap3.LockBits(&rect3, ImageLockModeWrite, PixelFormat24bppRGB, &bitmapData3);
 	byte* pixels3 = (byte*)bitmapData3.Scan0;
 	//alpha混合
-	int cx = atoi(argv[2]), cy = atoi(argv[3]);
+	int cx = _wtoi(argv[2]), cy = _wtoi(argv[3]);
 	for (int i = 0; i<hTarget->w; i++)
 		for (int j = 0; j<hTarget->h; j++)
 		{
@@ -257,15 +252,8 @@ void alphares()
 void image(wchar_t *CmdLine)
 {
 	int argc;
-	wchar_t **argvw = CommandLineToArgvW(CmdLine, &argc);
-	//wchar_t转char
-	for (int i = 0; i < argc; i++)
-	{
-		size_t len = 2 * wcslen(argvw[i]) + 1;
-		size_t converted = 0;
-		wcstombs_s(&converted, argv[i], len, argvw[i], _TRUNCATE);
-	}
-	match(0, "help")
+	argv = CommandLineToArgvW(CmdLine, &argc);
+	match(0, L"help")
 	{
 		printf(
 			"image\n"
@@ -288,21 +276,21 @@ void image(wchar_t *CmdLine)
 			"setpix tag x y r g b\t设置画布tag上x,y位置的rgb值\n"
 		);
 	}
-	match(0, "load") //加载资源到资源映射表
+	match(0, L"load") //加载资源到资源映射表
 	{
-		char *tag; //资源描述符
+		wchar_t *tag; //资源描述符
 		tag = (argc == 3) ? argv[2] : argv[1];
 		//销毁原来的资源，防止内存泄漏
 		if (resmap.count(tag)) delres(tag);
 		imageres hRes(argv[1]);
 		resmap[tag] = hRes;
 	}
-	match(0, "unload") //卸载资源
+	match(0, L"unload") //卸载资源
 	{
 		//销毁原来的资源，防止内存泄漏
 		delres(argv[1]);
 	}
-	match(0, "save") //保存为图片
+	match(0, L"save") //保存为图片
 	{
 		imageres * hRes = getres(argv[2]);
 		HBITMAP hSrc = copyhbitmap(hRes);
@@ -310,19 +298,19 @@ void image(wchar_t *CmdLine)
 		Bitmap bitmap(hSrc, nullptr);
 		//https://stackoverflow.com/questions/1584202/gdi-bitmap-save-problem
 		CLSID Clsid;
-		matchclsid("bmp") CLSIDFromString(L"{557cf400-1a04-11d3-9a73-0000f81ef32e}", &Clsid);
-		matchclsid("jpg") CLSIDFromString(L"{557cf401-1a04-11d3-9a73-0000f81ef32e}", &Clsid);
-		matchclsid("png") CLSIDFromString(L"{557cf406-1a04-11d3-9a73-0000f81ef32e}", &Clsid);
-		bitmap.Save(argvw[1], &Clsid, nullptr);
+		matchclsid(L"bmp") CLSIDFromString(L"{557cf400-1a04-11d3-9a73-0000f81ef32e}", &Clsid);
+		matchclsid(L"jpg") CLSIDFromString(L"{557cf401-1a04-11d3-9a73-0000f81ef32e}", &Clsid);
+		matchclsid(L"png") CLSIDFromString(L"{557cf406-1a04-11d3-9a73-0000f81ef32e}", &Clsid);
+		bitmap.Save(argv[1], &Clsid, nullptr);
 		DeleteObject(hSrc);
 	}
-	match(0, "target") //更改绘图目标
+	match(0, L"target") //更改绘图目标
 	{
 		hTarget = getres(argv[1]);
 	}
-	match(0, "buffer") //新建一个buffer对象
+	match(0, L"buffer") //新建一个buffer对象
 	{
-		char *tag = argv[1];
+		wchar_t *tag = argv[1];
 		//销毁原来的资源，防止内存泄漏
 		if (resmap.count(tag)) delres(tag);
 		imageres hRes;
@@ -335,17 +323,17 @@ void image(wchar_t *CmdLine)
 		//把buffer添加到资源调用表中
 		resmap[tag] = hRes;
 	}
-	match(0, "resize") //缩放
+	match(0, L"resize") //缩放
 	{
-		match(1,"cmd")
+		match(1,L"cmd")
 		{
 			RECT rc,rc2;
 			SetScrollRange(hCMD, 0, 0, 0, 1);
 			SetScrollRange(hCMD, 1, 0, 0, 1);
 			GetClientRect(hCMD, &rc);
 			GetWindowRect(hCMD, &rc2);
-			int w = (rc2.right - rc2.left) - (rc.right - rc.left) + int((atoi(argv[2])) / scale);
-			int h = (rc2.bottom - rc2.top) - (rc.bottom - rc.top) + int((atoi(argv[2])) / scale);
+			int w = (rc2.right - rc2.left) - (rc.right - rc.left) + int((_wtoi(argv[2])) / scale);
+			int h = (rc2.bottom - rc2.top) - (rc.bottom - rc.top) + int((_wtoi(argv[2])) / scale);
 			//printf("scale:%f\n", scale);
 			//printf("C:%dx%d\n", rc.right - rc.left, rc.bottom - rc.top);
 			//printf("W:%dx%d\n", rc2.right - rc2.left, rc2.bottom - rc2.top);
@@ -356,9 +344,9 @@ void image(wchar_t *CmdLine)
 		}else{
 			imageres * hRes = getres(argv[1]);
 			HDC hDCMem = CreateCompatibleDC(hRes->dc);
-			HBITMAP hBitmap = CreateCompatibleBitmap(hRes->dc, atoi(argv[2]), atoi(argv[3]));
+			HBITMAP hBitmap = CreateCompatibleBitmap(hRes->dc, _wtoi(argv[2]), _wtoi(argv[3]));
 			HBITMAP oldbmp = (HBITMAP)SelectObject(hDCMem, hBitmap);
-			StretchBlt(hDCMem, 0, 0, atoi(argv[2]), atoi(argv[3]), hRes->dc, 0, 0, hRes->w, hRes->h, SRCCOPY);
+			StretchBlt(hDCMem, 0, 0, _wtoi(argv[2]), _wtoi(argv[3]), hRes->dc, 0, 0, hRes->w, hRes->h, SRCCOPY);
 			//销毁原来的资源，防止内存泄漏
 			HBITMAP bmp = (HBITMAP)SelectObject(hRes->dc, hRes->oldbmp);
 			DeleteObject(bmp);
@@ -366,78 +354,78 @@ void image(wchar_t *CmdLine)
 			//替换原来的资源
 			hRes->oldbmp = oldbmp;
 			hRes->dc = hDCMem;
-			hRes->w = atoi(argv[2]);
-			hRes->h = atoi(argv[3]);
+			hRes->w = _wtoi(argv[2]);
+			hRes->h = _wtoi(argv[3]);
 		}
 	}
-	match(0, "cls") //清屏
+	match(0, L"cls") //清屏
 	{
 		InvalidateRect(hCMD, nullptr, true);
 	}
-	match(0, "rotate")
+	match(0, L"rotate")
 	{
 		rotateres();
 	}
-	match(0, "draw")
+	match(0, L"draw")
 	{
 		//直接在目标上绘图
 		imageres * hRes = getres(argv[1]);
 		if (argc == 4)
 		{
-				BitBlt(hTarget->dc, atoi(argv[2]), atoi(argv[3]), hRes->w, hRes->h, hRes->dc, 0, 0, SRCCOPY);
+				BitBlt(hTarget->dc, _wtoi(argv[2]), _wtoi(argv[3]), hRes->w, hRes->h, hRes->dc, 0, 0, SRCCOPY);
 		}
 		else
 		{
-			match(4, "trans")
-					TransparentBlt(hTarget->dc, atoi(argv[2]), atoi(argv[3]), hRes->w, hRes->h, hRes->dc, 0, 0, hRes->w, hRes->h, RGB(255, 255, 255));
-			match(4, "alpha")
+			match(4, L"trans")
+					TransparentBlt(hTarget->dc, _wtoi(argv[2]), _wtoi(argv[3]), hRes->w, hRes->h, hRes->dc, 0, 0, hRes->w, hRes->h, RGB(255, 255, 255));
+			match(4, L"alpha")
 				alphares();
 		}
 		Sleep(drawdelay);
 	}
-	match(0, "text")
+	match(0, L"text")
 	{
 		//显示两次才会刷新出来，大概是个bug
-		for (int i = 0; i < 2;i++) TextOutA(hTarget->dc, atoi(argv[2]), atoi(argv[3]), argv[1], strlen(argv[1]));
+		for (int i = 0; i < 2;i++) TextOutW(hTarget->dc, _wtoi(argv[2]), _wtoi(argv[3]), argv[1], wcslen(argv[1]));
 	}
-	match(0, "font")
+	match(0, L"font")
 	{
 		SetBkMode(hTarget->dc, TRANSPARENT);
-		SetTextColor(hTarget->dc, RGB(atoi(argv[3]), atoi(argv[4]), atoi(argv[5])));
-		HFONT hFont = CreateFontA(
-			atoi(argv[2]), atoi(argv[1]), 0/*不用管*/, 0/*不用管*/, 400 /*一般这个值设为400*/,
+		SetTextColor(hTarget->dc, RGB(_wtoi(argv[3]), _wtoi(argv[4]), _wtoi(argv[5])));
+		HFONT hFont = CreateFontW(
+			_wtoi(argv[2]), _wtoi(argv[1]), 0/*不用管*/, 0/*不用管*/, 400 /*一般这个值设为400*/,
 			FALSE/*不带斜体*/, FALSE/*不带下划线*/, FALSE/*不带删除线*/,
 			DEFAULT_CHARSET, //这里我们使用默认字符集，还有其他以 _CHARSET 结尾的常量可用
 			OUT_CHARACTER_PRECIS, CLIP_CHARACTER_PRECIS, //这行参数不用管
 			DEFAULT_QUALITY, //默认输出质量
 			FF_DONTCARE, //不指定字体族*/
-			"新宋体" //字体名
+			L"新宋体" //字体名
 		);
 		SelectObject(hTarget->dc,hFont);
 	}
-	match(0, "delay")
+	match(0, L"delay")
 	{
-		drawdelay = atoi(argv[1]);
+		drawdelay = _wtoi(argv[1]);
 	}
-	match(0, "info")
+	match(0, L"info")
 	{
 		imageres * hRes = getres(argv[1]);
-		sprintf_s(info, sizeof(info), "%d %d", hRes->w, hRes->h);
-		SetEnvironmentVariableA("image", info);
+		wsprintfW(info, L"%d %d", hRes->w, hRes->h);
+		SetEnvironmentVariableW(L"image", info);
 	}
-	match(0, "export")
+	match(0, L"export")
 	{
-		sprintf_s(info, sizeof(info), "%d", (int)hCMD);
-		SetEnvironmentVariableA("image", info);
+		wsprintfW(info, L"%d", (int)hCMD);
+		SetEnvironmentVariableW(L"image", info);
 	}
-	match(0, "import")
+	match(0, L"import")
 	{
-		char *tag = argv[2];
+		wchar_t *tag = argv[2];
 		//销毁原来的资源，防止内存泄漏
 		if (resmap.count(tag)) delres(tag);
 		imageres hRes;
 		//获取cmd大小以及绘图句柄
-		HWND hCMD2 = (HWND)atoi(argv[1]);
+		HWND hCMD2 = (HWND)_wtoi(argv[1]);
 		HDC hDC = GetDC(hCMD2);
 		DEVMODE dm;
 		dm.dmSize = sizeof(DEVMODE);
@@ -452,18 +440,18 @@ void image(wchar_t *CmdLine)
 		hRes.h = (int)ceil(scale*(rc.bottom - rc.top));
 		resmap[tag] = hRes; //把cmd作为资源添加到调用表中
 	}
-	match(0, "getpix")
+	match(0, L"getpix")
 	{
 		imageres * hRes = getres(argv[1]);
-		COLORREF color=GetPixel(hRes->dc, atoi(argv[2]), atoi(argv[3]));
-		sprintf_s(info, sizeof(info), "%d %d %d", GetRValue(color), GetGValue(color), GetBValue(color));
-		SetEnvironmentVariableA("image", info);
+		COLORREF color=GetPixel(hRes->dc, _wtoi(argv[2]), _wtoi(argv[3]));
+		wsprintfW(info, L"%d %d %d", GetRValue(color), GetGValue(color), GetBValue(color));
+		SetEnvironmentVariableW(L"image", info);
 	}
-	match(0, "setpix")
+	match(0, L"setpix")
 	{
 		imageres * hRes = getres(argv[1]);
-		SetPixel(hRes->dc, atoi(argv[2]), atoi(argv[3]), RGB(atoi(argv[4]), atoi(argv[5]), atoi(argv[6])));
+		SetPixel(hRes->dc, _wtoi(argv[2]), _wtoi(argv[3]), RGB(_wtoi(argv[4]), _wtoi(argv[5]), _wtoi(argv[6])));
 	}
-	LocalFree(argvw);
+	LocalFree(argv);
 	return;
 }
