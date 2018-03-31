@@ -109,6 +109,8 @@ void Init_image() //初始化
 	hRes.w = dm.dmPelsWidth;
 	hRes.h = dm.dmPelsHeight;
 	resmap["desktop"] = hRes; //把desktop作为资源添加到调用表中
+
+	TextOutA(hTarget->dc, 0, 0, 0, 0);//第一次使用TextOutA无效，大概是个bug
 	return;
 }
 imageres * getres(char *tag) //在资源映射表中查找资源
@@ -392,6 +394,26 @@ void image(wchar_t *CmdLine)
 				alphares();
 		}
 		Sleep(drawdelay);
+	}
+	match(0, "text")
+	{
+		//显示两次才会刷新出来，大概是个bug
+		for (int i = 0; i < 2;i++) TextOutA(hTarget->dc, atoi(argv[2]), atoi(argv[3]), argv[1], strlen(argv[1]));
+	}
+	match(0, "font")
+	{
+		SetBkMode(hTarget->dc, TRANSPARENT);
+		SetTextColor(hTarget->dc, RGB(atoi(argv[3]), atoi(argv[4]), atoi(argv[5])));
+		HFONT hFont = CreateFontA(
+			atoi(argv[2]), atoi(argv[1]), 0/*不用管*/, 0/*不用管*/, 400 /*一般这个值设为400*/,
+			FALSE/*不带斜体*/, FALSE/*不带下划线*/, FALSE/*不带删除线*/,
+			DEFAULT_CHARSET, //这里我们使用默认字符集，还有其他以 _CHARSET 结尾的常量可用
+			OUT_CHARACTER_PRECIS, CLIP_CHARACTER_PRECIS, //这行参数不用管
+			DEFAULT_QUALITY, //默认输出质量
+			FF_DONTCARE, //不指定字体族*/
+			"新宋体" //字体名
+		);
+		SelectObject(hTarget->dc,hFont);
 	}
 	match(0, "delay")
 	{

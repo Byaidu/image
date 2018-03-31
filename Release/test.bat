@@ -7,5 +7,6 @@ set image=load bin.jpg bin
 set image=rotate bin 45
 set image=save bin2.bmp bin
 set image=draw bin2.bmp 0 0
-set image=info cmd
+set image=font 50 100 0 255 255
+set image=text "hello world" 200 500
 pause
