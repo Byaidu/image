@@ -1,0 +1,4 @@
+draw bin 500 0
+text "hello world" 0 800
+text "image the best" 0 400
+text "the test" 0 300

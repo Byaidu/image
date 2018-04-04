@@ -8,12 +8,15 @@
 #include <gdiplus.h>
 #include <wchar.h>
 #include <iostream>
+#include <fstream>
+#include <string>
 #include <cstdio>
 #include <map>
 using namespace std;
 using namespace Gdiplus;
 
 #define DLL_EXPORT __declspec(dllexport)
+#define wtoi _wtoi
 #define wcsicmp _wcsicmp
 #define match(x,y) if (!wcsicmp(argv[x],y))
 #define matchclsid(x) if (!wcsicmp(&argv[1][wcslen(argv[1]) - 3], x))
@@ -43,7 +46,7 @@ struct imageres { //资源结构体
 }*hTarget;
 map<wstring, imageres> resmap; //资源映射表
 HWND hCMD;//控制台窗口句柄
-wchar_t **argv,info[50];
+wchar_t **argv;
 int drawdelay = 0;
 double scale;//缩放比校正
 
@@ -155,7 +158,7 @@ void rotateres()
 	byte* pixels2 = (byte*)bitmapData2.Scan0;
 	//旋转
 	double pi = 3.1415926;
-	double angle = -(double)_wtoi(argv[2]) / 180 * pi;
+	double angle = -(double)wtoi(argv[2]) / 180 * pi;
 	double sina = sin(angle), cosa = cos(angle);
 	int cx = hRes->w / 2, cy = hRes->h / 2;
 	for (int i = 0; i<hRes->w; i++)
@@ -189,7 +192,7 @@ void rotateres()
 }
 void alphares()
 {
-	double alpha = (double)_wtoi(argv[5])/100;
+	double alpha = (double)wtoi(argv[5])/100;
 	//用于加载源位图
 	imageres * hRes = getres(argv[1]);
 	HBITMAP hSrc = copyhbitmap(hRes);
@@ -213,7 +216,7 @@ void alphares()
 	bitmap3.LockBits(&rect3, ImageLockModeWrite, PixelFormat24bppRGB, &bitmapData3);
 	byte* pixels3 = (byte*)bitmapData3.Scan0;
 	//alpha混合
-	int cx = _wtoi(argv[2]), cy = _wtoi(argv[3]);
+	int cx = wtoi(argv[2]), cy = wtoi(argv[3]);
 	for (int i = 0; i<hTarget->w; i++)
 		for (int j = 0; j<hTarget->h; j++)
 		{
@@ -247,7 +250,6 @@ void alphares()
 	DeleteObject(hBitmap);
 	DeleteDC(hDCMem);
 }
-
 
 void image(wchar_t *CmdLine)
 {
@@ -332,8 +334,8 @@ void image(wchar_t *CmdLine)
 			SetScrollRange(hCMD, 1, 0, 0, 1);
 			GetClientRect(hCMD, &rc);
 			GetWindowRect(hCMD, &rc2);
-			int w = (rc2.right - rc2.left) - (rc.right - rc.left) + int((_wtoi(argv[2])) / scale);
-			int h = (rc2.bottom - rc2.top) - (rc.bottom - rc.top) + int((_wtoi(argv[2])) / scale);
+			int w = (rc2.right - rc2.left) - (rc.right - rc.left) + int((wtoi(argv[2])) / scale);
+			int h = (rc2.bottom - rc2.top) - (rc.bottom - rc.top) + int((wtoi(argv[2])) / scale);
 			//printf("scale:%f\n", scale);
 			//printf("C:%dx%d\n", rc.right - rc.left, rc.bottom - rc.top);
 			//printf("W:%dx%d\n", rc2.right - rc2.left, rc2.bottom - rc2.top);
@@ -344,9 +346,9 @@ void image(wchar_t *CmdLine)
 		}else{
 			imageres * hRes = getres(argv[1]);
 			HDC hDCMem = CreateCompatibleDC(hRes->dc);
-			HBITMAP hBitmap = CreateCompatibleBitmap(hRes->dc, _wtoi(argv[2]), _wtoi(argv[3]));
+			HBITMAP hBitmap = CreateCompatibleBitmap(hRes->dc, wtoi(argv[2]), wtoi(argv[3]));
 			HBITMAP oldbmp = (HBITMAP)SelectObject(hDCMem, hBitmap);
-			StretchBlt(hDCMem, 0, 0, _wtoi(argv[2]), _wtoi(argv[3]), hRes->dc, 0, 0, hRes->w, hRes->h, SRCCOPY);
+			StretchBlt(hDCMem, 0, 0, wtoi(argv[2]), wtoi(argv[3]), hRes->dc, 0, 0, hRes->w, hRes->h, SRCCOPY);
 			//销毁原来的资源，防止内存泄漏
 			HBITMAP bmp = (HBITMAP)SelectObject(hRes->dc, hRes->oldbmp);
 			DeleteObject(bmp);
@@ -354,8 +356,8 @@ void image(wchar_t *CmdLine)
 			//替换原来的资源
 			hRes->oldbmp = oldbmp;
 			hRes->dc = hDCMem;
-			hRes->w = _wtoi(argv[2]);
-			hRes->h = _wtoi(argv[3]);
+			hRes->w = wtoi(argv[2]);
+			hRes->h = wtoi(argv[3]);
 		}
 	}
 	match(0, L"cls") //清屏
@@ -372,12 +374,12 @@ void image(wchar_t *CmdLine)
 		imageres * hRes = getres(argv[1]);
 		if (argc == 4)
 		{
-				BitBlt(hTarget->dc, _wtoi(argv[2]), _wtoi(argv[3]), hRes->w, hRes->h, hRes->dc, 0, 0, SRCCOPY);
+				BitBlt(hTarget->dc, wtoi(argv[2]), wtoi(argv[3]), hRes->w, hRes->h, hRes->dc, 0, 0, SRCCOPY);
 		}
 		else
 		{
 			match(4, L"trans")
-					TransparentBlt(hTarget->dc, _wtoi(argv[2]), _wtoi(argv[3]), hRes->w, hRes->h, hRes->dc, 0, 0, hRes->w, hRes->h, RGB(255, 255, 255));
+					TransparentBlt(hTarget->dc, wtoi(argv[2]), wtoi(argv[3]), hRes->w, hRes->h, hRes->dc, 0, 0, hRes->w, hRes->h, RGB(255, 255, 255));
 			match(4, L"alpha")
 				alphares();
 		}
@@ -386,14 +388,14 @@ void image(wchar_t *CmdLine)
 	match(0, L"text")
 	{
 		//显示两次才会刷新出来，大概是个bug
-		for (int i = 0; i < 2;i++) TextOutW(hTarget->dc, _wtoi(argv[2]), _wtoi(argv[3]), argv[1], wcslen(argv[1]));
+		for (int i = 0; i < 2;i++) TextOutW(hTarget->dc, wtoi(argv[2]), wtoi(argv[3]), argv[1], wcslen(argv[1]));
 	}
 	match(0, L"font")
 	{
 		SetBkMode(hTarget->dc, TRANSPARENT);
-		SetTextColor(hTarget->dc, RGB(_wtoi(argv[3]), _wtoi(argv[4]), _wtoi(argv[5])));
+		SetTextColor(hTarget->dc, RGB(wtoi(argv[3]), wtoi(argv[4]), wtoi(argv[5])));
 		HFONT hFont = CreateFontW(
-			_wtoi(argv[2]), _wtoi(argv[1]), 0/*不用管*/, 0/*不用管*/, 400 /*一般这个值设为400*/,
+			wtoi(argv[2]), wtoi(argv[1]), 0/*不用管*/, 0/*不用管*/, 400 /*一般这个值设为400*/,
 			FALSE/*不带斜体*/, FALSE/*不带下划线*/, FALSE/*不带删除线*/,
 			DEFAULT_CHARSET, //这里我们使用默认字符集，还有其他以 _CHARSET 结尾的常量可用
 			OUT_CHARACTER_PRECIS, CLIP_CHARACTER_PRECIS, //这行参数不用管
@@ -405,16 +407,18 @@ void image(wchar_t *CmdLine)
 	}
 	match(0, L"delay")
 	{
-		drawdelay = _wtoi(argv[1]);
+		drawdelay = wtoi(argv[1]);
 	}
 	match(0, L"info")
 	{
+		wchar_t info[100];
 		imageres * hRes = getres(argv[1]);
 		wsprintfW(info, L"%d %d", hRes->w, hRes->h);
 		SetEnvironmentVariableW(L"image", info);
 	}
 	match(0, L"export")
 	{
+		wchar_t info[100];
 		wsprintfW(info, L"%d", (int)hCMD);
 		SetEnvironmentVariableW(L"image", info);
 	}
@@ -425,7 +429,7 @@ void image(wchar_t *CmdLine)
 		if (resmap.count(tag)) delres(tag);
 		imageres hRes;
 		//获取cmd大小以及绘图句柄
-		HWND hCMD2 = (HWND)_wtoi(argv[1]);
+		HWND hCMD2 = (HWND)wtoi(argv[1]);
 		HDC hDC = GetDC(hCMD2);
 		DEVMODE dm;
 		dm.dmSize = sizeof(DEVMODE);
@@ -442,15 +446,29 @@ void image(wchar_t *CmdLine)
 	}
 	match(0, L"getpix")
 	{
+		wchar_t info[100];
 		imageres * hRes = getres(argv[1]);
-		COLORREF color=GetPixel(hRes->dc, _wtoi(argv[2]), _wtoi(argv[3]));
+		COLORREF color=GetPixel(hRes->dc, wtoi(argv[2]), wtoi(argv[3]));
 		wsprintfW(info, L"%d %d %d", GetRValue(color), GetGValue(color), GetBValue(color));
 		SetEnvironmentVariableW(L"image", info);
 	}
 	match(0, L"setpix")
 	{
 		imageres * hRes = getres(argv[1]);
-		SetPixel(hRes->dc, _wtoi(argv[2]), _wtoi(argv[3]), RGB(_wtoi(argv[4]), _wtoi(argv[5]), _wtoi(argv[6])));
+		SetPixel(hRes->dc, wtoi(argv[2]), wtoi(argv[3]), RGB(wtoi(argv[4]), wtoi(argv[5]), wtoi(argv[6])));
+	}
+	match(0, L"list")
+	{
+		ifstream in(argv[1]);
+		string str;
+		wchar_t wstr[100];
+		while (!in.eof())
+		{
+			getline(in, str);
+			MultiByteToWideChar(CP_ACP, 0, str.c_str(), -1, wstr, sizeof(wstr));
+			image(wstr);
+		}
+		in.close();
 	}
 	LocalFree(argv);
 	return;
