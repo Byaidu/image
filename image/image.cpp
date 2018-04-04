@@ -343,6 +343,7 @@ void image(wchar_t *CmdLine)
 			Sleep(10);
 			SetScrollRange(hCMD, 0, 0, 0, 1);
 			SetScrollRange(hCMD, 1, 0, 0, 1);
+			Sleep(10);
 		}else{
 			imageres * hRes = getres(argv[1]);
 			HDC hDCMem = CreateCompatibleDC(hRes->dc);

@@ -1,6 +1,6 @@
 font 50 100 0 255 255
-list test2.txt
 load bin.jpg bin
+list test2.txt
 rotate bin 45
 save bin2.bmp bin
 draw bin2.bmp 0 0
