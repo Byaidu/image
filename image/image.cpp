@@ -15,6 +15,7 @@
 using namespace std;
 using namespace Gdiplus;
 
+#define KEYDOWN(vk_code) ((GetAsyncKeyState(vk_code) & 0x8000) ? 1 : 0) 
 #define DLL_EXPORT __declspec(dllexport)
 #define wtoi _wtoi
 #define wcsicmp _wcsicmp
@@ -46,9 +47,8 @@ struct imageres { //资源结构体
 }*hTarget;
 map<wstring, imageres> resmap; //资源映射表
 HWND hCMD;//控制台窗口句柄
+double scale;//校正缩放比
 wchar_t **argv;
-int drawdelay = 0;
-double scale;//缩放比校正
 
 void image(wchar_t *); //主函数
 void Init_image(); //初始化
@@ -327,6 +327,7 @@ void image(wchar_t *CmdLine)
 	}
 	match(0, L"resize") //缩放
 	{
+		imageres * hRes = getres(argv[1]);
 		match(1,L"cmd")
 		{
 			RECT rc,rc2;
@@ -335,7 +336,7 @@ void image(wchar_t *CmdLine)
 			GetClientRect(hCMD, &rc);
 			GetWindowRect(hCMD, &rc2);
 			int w = (rc2.right - rc2.left) - (rc.right - rc.left) + int((wtoi(argv[2])) / scale);
-			int h = (rc2.bottom - rc2.top) - (rc.bottom - rc.top) + int((wtoi(argv[2])) / scale);
+			int h = (rc2.bottom - rc2.top) - (rc.bottom - rc.top) + int((wtoi(argv[3])) / scale);
 			//printf("scale:%f\n", scale);
 			//printf("C:%dx%d\n", rc.right - rc.left, rc.bottom - rc.top);
 			//printf("W:%dx%d\n", rc2.right - rc2.left, rc2.bottom - rc2.top);
@@ -344,8 +345,9 @@ void image(wchar_t *CmdLine)
 			SetScrollRange(hCMD, 0, 0, 0, 1);
 			SetScrollRange(hCMD, 1, 0, 0, 1);
 			Sleep(10);
+			hRes->w = (int)wtoi(argv[2]);
+			hRes->h = (int)wtoi(argv[3]);
 		}else{
-			imageres * hRes = getres(argv[1]);
 			HDC hDCMem = CreateCompatibleDC(hRes->dc);
 			HBITMAP hBitmap = CreateCompatibleBitmap(hRes->dc, wtoi(argv[2]), wtoi(argv[3]));
 			HBITMAP oldbmp = (HBITMAP)SelectObject(hDCMem, hBitmap);
@@ -384,7 +386,6 @@ void image(wchar_t *CmdLine)
 			match(4, L"alpha")
 				alphares();
 		}
-		Sleep(drawdelay);
 	}
 	match(0, L"text")
 	{
@@ -406,9 +407,9 @@ void image(wchar_t *CmdLine)
 		);
 		SelectObject(hTarget->dc,hFont);
 	}
-	match(0, L"delay")
+	match(0, L"sleep")
 	{
-		drawdelay = wtoi(argv[1]);
+		Sleep(wtoi(argv[1]));
 	}
 	match(0, L"info")
 	{
@@ -448,15 +449,13 @@ void image(wchar_t *CmdLine)
 	match(0, L"getpix")
 	{
 		wchar_t info[100];
-		imageres * hRes = getres(argv[1]);
-		COLORREF color=GetPixel(hRes->dc, wtoi(argv[2]), wtoi(argv[3]));
+		COLORREF color=GetPixel(hTarget->dc, wtoi(argv[1]), wtoi(argv[2]));
 		wsprintfW(info, L"%d %d %d", GetRValue(color), GetGValue(color), GetBValue(color));
 		SetEnvironmentVariableW(L"image", info);
 	}
 	match(0, L"setpix")
 	{
-		imageres * hRes = getres(argv[1]);
-		SetPixel(hRes->dc, wtoi(argv[2]), wtoi(argv[3]), RGB(wtoi(argv[4]), wtoi(argv[5]), wtoi(argv[6])));
+		SetPixel(hTarget->dc, wtoi(argv[1]), wtoi(argv[2]), RGB(wtoi(argv[3]), wtoi(argv[4]), wtoi(argv[5])));
 	}
 	match(0, L"list")
 	{
@@ -470,6 +469,39 @@ void image(wchar_t *CmdLine)
 			image(wstr);
 		}
 		in.close();
+	}
+	match(0, L"mouse")
+	{
+		imageres *hRes = getres((wchar_t*)L"cmd");
+		wchar_t info[100];
+		POINT mosPos;
+		int x, y;
+		// 获取标准输入输出设备句柄  
+		HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+		HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+		DWORD oldConMode;
+		GetConsoleMode(hIn, &oldConMode); // 备份
+		SetConsoleMode(hIn, (oldConMode | ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT)&(~ENABLE_QUICK_EDIT_MODE) );
+		INPUT_RECORD	mouseRec;
+		DWORD			res;
+		while (1)
+		{
+			ReadConsoleInput(hIn, &mouseRec, 1, &res);
+			if (mouseRec.EventType == MOUSE_EVENT)
+			{
+				if (mouseRec.Event.MouseEvent.dwButtonState == FROM_LEFT_1ST_BUTTON_PRESSED)
+				{
+					GetCursorPos(&mosPos);
+					ScreenToClient(hCMD, &mosPos);
+					x = min(max((int)scale*mosPos.x, 0), hRes->w);
+					y = min(max((int)scale*mosPos.y, 0), hRes->h);
+					break;
+				}
+			}
+		}
+		wsprintfW(info, L"%d %d", x, y);
+		SetEnvironmentVariableW(L"image", info);
+		SetConsoleMode(hIn, oldConMode);
 	}
 	LocalFree(argv);
 	return;
