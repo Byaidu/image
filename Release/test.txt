@@ -1,3 +1,4 @@
+resize cmd 1000 1000
 font 50 100 0 255 255
 load bin.jpg bin
 list test2.txt

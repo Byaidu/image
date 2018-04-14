@@ -4,6 +4,8 @@
 * 核心代码:https://github.com/YinTianliang/CAPIx
 ************************************************************/
 
+#define _CRT_SECURE_NO_WARNINGS
+#define _CRT_NON_CONFORMING_SWPRINTFS
 #include <windows.h>
 #include <gdiplus.h>
 #include <wchar.h>
@@ -12,6 +14,7 @@
 #include <string>
 #include <cstdio>
 #include <map>
+#include "regionmgr.cpp"
 using namespace std;
 using namespace Gdiplus;
 
@@ -28,6 +31,7 @@ struct imageres { //资源结构体
 	HDC dc;
 	HBITMAP oldbmp;
 	int w, h;
+	BUF region;
 	imageres() {};
 	imageres(wchar_t *file) //初始化结构体，并加载资源
 	{
@@ -44,6 +48,7 @@ struct imageres { //资源结构体
 		w = bi.bmWidth;
 		h = bi.bmHeight;
 	}
+	void regioninit(wchar_t *tag,int w,int h) {region = BUF(tag, w - 1, h - 1);}
 }*hTarget;
 map<wstring, imageres> resmap; //资源映射表
 HWND hCMD;//控制台窗口句柄
@@ -99,6 +104,7 @@ void Init_image() //初始化
 	hRes.dc = hDC;
 	hRes.w = int(scale*(rc.right - rc.left));
 	hRes.h = int(scale*(rc.bottom - rc.top));
+	hRes.regioninit((wchar_t*)L"cmd", hRes.w, hRes.h);
 	resmap[L"cmd"] = hRes; //把cmd作为资源添加到调用表中
 	hTarget = &resmap[L"cmd"];//getres("cmd"); //绘图默认指向cmd
 	//获取desktop大小以及绘图句柄
@@ -106,6 +112,7 @@ void Init_image() //初始化
 	hRes.dc = hDC;
 	hRes.w = dm.dmPelsWidth;
 	hRes.h = dm.dmPelsHeight;
+	hRes.regioninit((wchar_t*)L"desktop", hRes.w, hRes.h);
 	resmap[L"desktop"] = hRes; //把desktop作为资源添加到调用表中
 
 	TextOutA(hTarget->dc, 0, 0, 0, 0);//第一次使用TextOutA无效，大概是个bug
@@ -116,6 +123,7 @@ imageres * getres(wchar_t *tag) //在资源映射表中查找资源
 	if (!resmap.count(tag)) //如果在资源映射表中找不到资源，则先加载图片到资源映射表
 	{
 		imageres hRes(tag);
+		hRes.regioninit(tag, hRes.w, hRes.h);
 		resmap[tag] = hRes;
 	}
 	return &resmap[tag];
@@ -253,29 +261,14 @@ void alphares()
 
 void image(wchar_t *CmdLine)
 {
+	//wcout << CmdLine << endl;
 	int argc;
 	argv = CommandLineToArgvW(CmdLine, &argc);
 	match(0, L"help")
 	{
 		printf(
 			"image\n"
-			"控制台显示图片 Ver 3.0 by Byaidu\n"
-			"\n"
-			"help\t\t\t显示帮助\n"
-			"load file [tag]\t\t申请一块画布tag，并加载图片到画布tag\n"
-			"unload tag\t\t删除画布tag\n"
-			"save file tag\t\t将画布tag的内容存储到file中\n"
-			"target tag\t\t切换当前绘图目标为画布tag\n"
-			"buffer tag\t\t申请一块画布tag\n"
-			"stretch tag w h\t\t将画布tag缩放到w*h的大小\n"
-			"cls\t\t\t清空画布cmd的内容\n"
-			"rotate tag degree\t将画布tag顺时针旋转degree度\n"
-			"draw tag x y [trans|and]将画布tag绘制到当前绘图目标的x,y位置上\n"
-			"info tag\t\t将画布tag的宽和高存储到变量image\n"
-			"export\t\t\t将画布cmd的句柄存储到变量image\n"
-			"import handle tag\t通过句柄将另一个控制台的画布cmd映射到此控制台的画布tag\n"
-			"getpix tag x y\t\t将画布tag上x,y位置的rgb值存储到变量image\n"
-			"setpix tag x y r g b\t设置画布tag上x,y位置的rgb值\n"
+			"控制台显示图片 Ver 3.1 by Byaidu\n"
 		);
 	}
 	match(0, L"load") //加载资源到资源映射表
@@ -285,6 +278,7 @@ void image(wchar_t *CmdLine)
 		//销毁原来的资源，防止内存泄漏
 		if (resmap.count(tag)) delres(tag);
 		imageres hRes(argv[1]);
+		hRes.regioninit(tag, hRes.w, hRes.h);
 		resmap[tag] = hRes;
 	}
 	match(0, L"unload") //卸载资源
@@ -323,6 +317,7 @@ void image(wchar_t *CmdLine)
 		hRes.w = hTarget->w;
 		hRes.h = hTarget->h;
 		//把buffer添加到资源调用表中
+		hRes.regioninit(tag, hRes.w, hRes.h);
 		resmap[tag] = hRes;
 	}
 	match(0, L"resize") //缩放
@@ -330,6 +325,14 @@ void image(wchar_t *CmdLine)
 		imageres * hRes = getres(argv[1]);
 		match(1,L"cmd")
 		{
+			//防止快速编辑功能刷掉图像
+			// 获取标准输入输出设备句柄  
+			HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+			HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
+			DWORD oldConMode;
+			GetConsoleMode(hIn, &oldConMode); // 备份
+			SetConsoleMode(hIn, (oldConMode | ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT)&(~ENABLE_QUICK_EDIT_MODE));
+
 			RECT rc,rc2;
 			SetScrollRange(hCMD, 0, 0, 0, 1);
 			SetScrollRange(hCMD, 1, 0, 0, 1);
@@ -362,10 +365,14 @@ void image(wchar_t *CmdLine)
 			hRes->w = wtoi(argv[2]);
 			hRes->h = wtoi(argv[3]);
 		}
+		hRes->regioninit(argv[1], hRes->w, hRes->h);
 	}
 	match(0, L"cls") //清屏
 	{
+		imageres * hRes = getres((wchar_t*)L"cmd");
+		hRes->regioninit((wchar_t*)L"cmd", hRes->w, hRes->h);
 		InvalidateRect(hCMD, nullptr, true);
+		Sleep(10);
 	}
 	match(0, L"rotate")
 	{
@@ -375,6 +382,7 @@ void image(wchar_t *CmdLine)
 	{
 		//直接在目标上绘图
 		imageres * hRes = getres(argv[1]);
+		complexupdate(hRes->region.p, 0, 0, hRes->region.p->x2, hRes->region.p->y2, wtoi(argv[2]), wtoi(argv[3]), hTarget->region.p);
 		if (argc == 4)
 		{
 				BitBlt(hTarget->dc, wtoi(argv[2]), wtoi(argv[3]), hRes->w, hRes->h, hRes->dc, 0, 0, SRCCOPY);
@@ -415,13 +423,13 @@ void image(wchar_t *CmdLine)
 	{
 		wchar_t info[100];
 		imageres * hRes = getres(argv[1]);
-		wsprintfW(info, L"%d %d", hRes->w, hRes->h);
+		swprintf(info, L"%d %d", hRes->w, hRes->h);
 		SetEnvironmentVariableW(L"image", info);
 	}
 	match(0, L"export")
 	{
 		wchar_t info[100];
-		wsprintfW(info, L"%d", (int)hCMD);
+		swprintf(info, L"%d", (int)hCMD);
 		SetEnvironmentVariableW(L"image", info);
 	}
 	match(0, L"import")
@@ -444,13 +452,14 @@ void image(wchar_t *CmdLine)
 		hRes.dc = hDC;
 		hRes.w = (int)ceil(scale*(rc.right - rc.left));
 		hRes.h = (int)ceil(scale*(rc.bottom - rc.top));
+		hRes.regioninit(tag, hRes.w, hRes.h);
 		resmap[tag] = hRes; //把cmd作为资源添加到调用表中
 	}
 	match(0, L"getpix")
 	{
 		wchar_t info[100];
 		COLORREF color=GetPixel(hTarget->dc, wtoi(argv[1]), wtoi(argv[2]));
-		wsprintfW(info, L"%d %d %d", GetRValue(color), GetGValue(color), GetBValue(color));
+		swprintf(info, L"%d %d %d", GetRValue(color), GetGValue(color), GetBValue(color));
 		SetEnvironmentVariableW(L"image", info);
 	}
 	match(0, L"setpix")
@@ -476,32 +485,69 @@ void image(wchar_t *CmdLine)
 		wchar_t info[100];
 		POINT mosPos;
 		int x, y;
+		int timer = wtoi(argv[1]);
+		//这里要重新设置一次，要不然ReadConsoleInput会卡住
 		// 获取标准输入输出设备句柄  
 		HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
 		HANDLE hIn = GetStdHandle(STD_INPUT_HANDLE);
 		DWORD oldConMode;
 		GetConsoleMode(hIn, &oldConMode); // 备份
-		SetConsoleMode(hIn, (oldConMode | ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT)&(~ENABLE_QUICK_EDIT_MODE) );
-		INPUT_RECORD	mouseRec;
-		DWORD			res;
-		while (1)
+		SetConsoleMode(hIn, (oldConMode | ENABLE_WINDOW_INPUT | ENABLE_MOUSE_INPUT)&(~ENABLE_QUICK_EDIT_MODE));
+		if (timer < 0)
 		{
-			ReadConsoleInput(hIn, &mouseRec, 1, &res);
-			if (mouseRec.EventType == MOUSE_EVENT)
+			INPUT_RECORD	mouseRec;
+			DWORD			res;
+			while (1)
 			{
-				if (mouseRec.Event.MouseEvent.dwButtonState == FROM_LEFT_1ST_BUTTON_PRESSED)
+				ReadConsoleInput(hIn, &mouseRec, 1, &res);
+				if (mouseRec.EventType == MOUSE_EVENT)
 				{
-					GetCursorPos(&mosPos);
-					ScreenToClient(hCMD, &mosPos);
-					x = min(max((int)scale*mosPos.x, 0), hRes->w);
-					y = min(max((int)scale*mosPos.y, 0), hRes->h);
-					break;
+					if (mouseRec.Event.MouseEvent.dwButtonState == FROM_LEFT_1ST_BUTTON_PRESSED)
+					{
+						GetCursorPos(&mosPos);
+						ScreenToClient(hCMD, &mosPos);
+						x = min(max((int)scale*mosPos.x, 0), hRes->w);
+						y = min(max((int)scale*mosPos.y, 0), hRes->h);
+						break;
+					}
 				}
 			}
 		}
-		wsprintfW(info, L"%d %d", x, y);
-		SetEnvironmentVariableW(L"image", info);
+		if (timer >= 0)
+		{
+			DWORD tstart = GetTickCount();
+			while (!(KEYDOWN(VK_LBUTTON) || int(GetTickCount() - tstart) >= timer));
+			GetCursorPos(&mosPos);
+			ScreenToClient(hCMD, &mosPos);
+			x = min(max((int)scale*mosPos.x, 0), hRes->w);
+			y = min(max((int)scale*mosPos.y, 0), hRes->h);
+		}
+		if (argc >= 3)
+		{
+			int ret = 0;
+			for (int i = 2; i < argc; i++)
+			{
+				int x1, y1, x2, y2;
+				swscanf(argv[i], L"%d,%d,%d,%d", &x1, &y1, &x2, &y2);
+				if (x >= x1 && x <= x2 && y >= y1 && y <= y2) ret = i - 1;
+			}
+			swprintf(info, L"%d %d %d", x, y, ret);
+			SetEnvironmentVariableW(L"image", info);
+			swprintf(info, L"%d", ret);
+			SetEnvironmentVariableW(L"errorlevel", info);
+		}else{
+			wstring ret = query(resmap[L"cmd"].region.p, x, y);
+			swprintf(info, L"%d %d %s", x, y, ret.c_str());
+			SetEnvironmentVariableW(L"image", info);
+			swprintf(info, L"%s", ret.c_str());
+			SetEnvironmentVariableW(L"errorlevel", info);
+		}
 		SetConsoleMode(hIn, oldConMode);
+	}
+	match(0, L"debug")
+	{
+		imageres *hRes = getres((wchar_t*)L"cmd");
+		show(hRes->region.p);
 	}
 	LocalFree(argv);
 	return;
