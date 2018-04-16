@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 ﻿* image
+=======
+* image
+>>>>>>> fba7827b46de9ac93a4e36cb48e82c7bd4a5b10d
 控制台显示图片 Ver 3.1 by Byaidu
 
 | 命令                             | 作用                                                   |
