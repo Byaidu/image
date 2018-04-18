@@ -23,7 +23,7 @@
 | debug                            | 以图形形式输出区域索引树，用于查看画布cmd上的各个图块  |
 | font r g b w h                   | 设置当前绘图目标所用字体的rgb值和大小                  |
 | text string                      | 在当前绘图目标的x,y的位置上输出字符串string            |
-| mouse time [[region1] [region2]...]| 捕获鼠标坐标及事件，坐标以像素为单位，时间以毫秒为单位|
+| mouse time [region1] [region2] ...| 捕获鼠标坐标及事件，坐标以像素为单位，时间以毫秒为单位|
 |                                  | 若time>=0，当发生点击事件或时间超过限制时会将鼠标坐标x,y以及坐标在画布cmd上对应的图块的源tag存储到变量image，并将源tag单独再存储到变量errorlevel|
 |                                  | 若time<0，不设置时间限制                               |
 |                                  | 若设置了region，那么返回的的就不是源tag而是region序号，如果鼠标坐标不在任何一个指定的region中，则返回序号0|
