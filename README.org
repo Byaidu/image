@@ -4,7 +4,7 @@
 | 命令                             | 作用                                                   |
 |----------------------------------+--------------------------------------------------------|
 | help                             | 显示帮助                                               |
-| load file [tag]                  | 申请一块画布tag，并加载图片到画布tag                   |
+| load file [tag]                  | 申请一块画布tag，并加载图元到画布tag                   |
 | unload tag                       | 删除画布tag                                            |
 | save file tag                    | 将画布tag的内容存储到file中                            |
 | target tag                       | 切换当前绘图目标为画布tag                              |
@@ -20,13 +20,13 @@
 | setpix tag x y r g b             | 设置画布tag上x,y位置的rgb值                            |
 | sleep time                       | 延时time毫秒                                           |
 | list file                        | 执行image指令脚本file                                  |
-| debug                            | 以图形形式输出区域索引树，用于查看画布cmd上的各个图块  |
+| debug                            | 以图形形式输出图元索引树，用于查看画布cmd上的各个图元  |
 | font r g b w h                   | 设置当前绘图目标所用字体的rgb值和大小                  |
 | text string                      | 在当前绘图目标的x,y的位置上输出字符串string            |
-| mouse time [[region1] [region2]...]| 捕获鼠标坐标及事件，坐标以像素为单位，时间以毫秒为单位|
-|                                  | 若time>=0，当发生点击事件或时间超过限制时会将鼠标坐标x,y以及坐标在画布cmd上对应的图块的源tag存储到变量image，并将源tag单独再存储到变量errorlevel|
+| mouse time [region1] [region2] ...| 捕获鼠标坐标及事件，坐标以像素为单位，时间以毫秒为单位|
+|                                  | 若time>=0，当发生点击事件或时间超过限制时会将鼠标坐标x,y以及坐标在画布cmd上对应的图元tag存储到变量image，并将图元tag单独再存储到变量errorlevel|
 |                                  | 若time<0，不设置时间限制                               |
-|                                  | 若设置了region，那么返回的的就不是源tag而是region序号，如果鼠标坐标不在任何一个指定的region中，则返回序号0|
+|                                  | 若设置了region，那么返回的的就不是图元tag而是region序号，如果鼠标坐标不在任何一个指定的region中，则返回序号0|
 |                                  | region应以如下的形式给出：x1,y1,x2,y2                  |
 
 [[https://images2018.cnblogs.com/blog/1123683/201802/1123683-20180223134856925-1663767861.jpg]]
