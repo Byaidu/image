@@ -1,9 +1,9 @@
 * image
 控制台显示图片 Ver 3.5 by Byaidu
 
-以下为没有更新的3.1版本帮助
+3.5版本的完整帮助文档在www.bathome.net/viewthread.php?tid=47990&page=1&extra=#pid208060
 
-完整帮助文档在www.bathome.net/viewthread.php?tid=47990&page=1&extra=#pid208060
+以下为没有更新的3.1版本帮助文档
 
 | 命令                             | 作用                                                   |
 |----------------------------------+--------------------------------------------------------|
