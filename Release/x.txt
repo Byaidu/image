@@ -1,0 +1,46 @@
+:init
+resize cmd 1000 1000
+load button1 button1.bmp
+draw button1.bmp 0 0
+load button2 button2.bmp
+font 0 255 255 50 100
+text "º”‘ÿÕÍ≥…" 0 0
+mouse -1
+cls
+exit
+
+:act1
+text "ACT 1" 0 0
+draw button1 100 500
+draw button2 600 500
+mouse -1
+cls
+exit
+
+:act2
+text "ACT 2" 0 0
+draw button1 100 500 alpha 100
+draw button2 600 500 alpha 100
+mouse -1
+cls
+exit
+
+:act3
+text "ACT 3" 0 0
+draw button1 100 500 alpha 50
+draw button2 600 500 alpha 50
+mouse -1
+cls
+exit
+
+:button1
+text "YOU CLICK BUTTON 1" 0 100
+exit
+
+:button2
+text "YOU CLICK BUTTON 2" 0 100
+exit
+
+:cmd
+text "YOU CLICK NOTHING" 0 100
+exit

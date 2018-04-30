@@ -4,6 +4,7 @@
 #include <iostream>
 #include <algorithm>
 #include <map>
+#include <stack>
 #include <ctime>
 using namespace std;
 
@@ -149,26 +150,37 @@ void complexupdate(P *p,int x1,int y1,int x2,int y2,int x0,int y0,P *v,int now=0
 		else complexupdate(p->l,x1,y1,x2, p->l->y2,x0,y0,v,!now),complexupdate(p->r,x1, p->r->y1,x2,y2,x0,y0+p->r->y1-y1,v,!now);
 	}
 }
-//先序遍历 
+
+void colorregion(HDC hDC,int color,int x1,int y1,int x2,int y2)
+{
+	HPEN gPen = CreatePen(PS_SOLID, 1, color);
+	HBRUSH gBrush = CreateSolidBrush(color);
+	HPEN oPen = (HPEN)SelectObject(hDC, gPen);
+	HBRUSH oBrush = (HBRUSH)SelectObject(hDC, gBrush);
+	//Rectangle(srcmap[0], 500,500,505,505);
+	Rectangle(hDC, x1, y1, x2 + 1, y2 + 1);
+	//getchar();
+	//printf("(%d,%d)(%d,%d):%d(%d,%d)\n",p->x1,p->y1,p->x2,p->y2,p->src,p->x0,p->y0);
+	SelectObject(hDC, oPen);
+	SelectObject(hDC, oBrush);
+	DeleteObject(gPen);
+	DeleteObject(gBrush);
+}
+
+//先序遍历
 void show(P *p)
 {
 	HWND hCMD = GetConsoleWindow();
 	HDC hDC = GetDC(hCMD);
 	if (p->single){
 		int color = rand() % 16777216;
-		HPEN gPen = CreatePen(PS_SOLID, 1, color);
-		HBRUSH bBrush = CreateSolidBrush(color);
-		SelectObject(hDC, gPen);
-		SelectObject(hDC, bBrush);
-		//Rectangle(srcmap[0], 500,500,505,505);
-		Rectangle(hDC, p->x1, p->y1, p->x2+1, p->y2+1);
-		//getchar();
-		//printf("(%d,%d)(%d,%d):%d(%d,%d)\n",p->x1,p->y1,p->x2,p->y2,p->src,p->x0,p->y0);
+		colorregion(hDC, color, p->x1, p->y1, p->x2, p->y2);
 	} else {
 		//printf("(%d,%d)(%d,%d)\n", p->x1, p->y1, p->x2, p->y2);
 		show(p->l);
 		show(p->r);
 	}
+	ReleaseDC(hCMD,hDC);
 }
 wstring query(P *p, int x, int y, int now = 0)
 {

@@ -3,12 +3,12 @@
 setlocal EnableDelayedExpansion
 set image=resize cmd 1000 1000
 set image=buffer pen
-set image=load bin.bmp bin
-set image=load bin2.bmp bin2
+set image=load bin bin.bmp
+set image=load bin2 bin2.bmp
 set image=target bin
 set image=draw bin2 300 0
 set image=target cmd
-set image=font 50 100 0 255 255
+set image=font 0 255 255 50 100
 goto loop
 set image=list test.txt
 set image=text ÄãºÃ 0 600
