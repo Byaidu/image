@@ -1,6 +1,6 @@
 /***********************************************************
 image
-控制台显示图片 Ver 3.5 by Byaidu
+控制台显示图片 Ver 3.6 by Byaidu
 完整代码及档案下载:https://github.com/Byaidu/image
 部分代码参考:https://github.com/YinTianliang/CAPIx
 ************************************************************/
@@ -15,10 +15,14 @@ image
 #include <string>
 #include <cstdio>
 #include <map>
+#include <thread>
 #include "regionmgr.cpp"
 using namespace std;
 using namespace Gdiplus;
 
+#define KEYDEF(key) (keymap[key]=L#key)
+#define WMDEF(key) (wmmap[key]=L#key)
+#define MKDEF(key) (mkmap[key]=L#key)
 #define KEYDOWN(vk_code) ((GetAsyncKeyState(vk_code) & 0x8000) ? 1 : 0) 
 #define DLL_EXPORT __declspec(dllexport)
 #define wtoi _wtoi
@@ -27,9 +31,11 @@ using namespace Gdiplus;
 #define matchclsid(x,y) if (wstring(argv[x]).substr(wstring(argv[x]).length()-3)==wstring(y))
 #pragma comment(lib,"msimg32.lib")
 #pragma comment(lib,"GdiPlus.lib")
+#pragma comment(lib,"winmm.lib")
 
 struct imageres { //画布结构体
 	HDC dc;
+	HWND hwnd;
 	HBITMAP oldbmp;
 	int w, h;
 	BUF region; //图元索引树
@@ -49,9 +55,12 @@ struct imageres { //画布结构体
 		w = bi.bmWidth;
 		h = bi.bmHeight;
 	}
-	void regioninit(wchar_t *tag,int w,int h) {region = BUF(tag, w - 1, h - 1);}
-}*hTarget;
+	void regioninit(wchar_t *tag, int w, int h) { region = BUF(tag, w - 1, h - 1); }
+}*hTarget,*hOldTarget;
 map<wstring, imageres> resmap; //画布映射表
+map<WPARAM, wstring> keymap; //vk映射表
+map<WPARAM, wstring> mkmap; //mk映射表
+map<UINT, wstring> wmmap; //wm映射表
 HWND hCMD; //控制台窗口句柄
 double scale; //校正缩放比
 
@@ -82,9 +91,17 @@ extern "C" __declspec(dllexport) void call(wchar_t *varName, wchar_t *varValue)
 	if (!wcsicmp(varName, L"image")) image(varValue);
 	return;
 }
+void initkeydef()
+{
+	KEYDEF(VK_LBUTTON); KEYDEF(VK_RBUTTON); KEYDEF(VK_CANCEL); KEYDEF(VK_MBUTTON); KEYDEF(VK_XBUTTON1); KEYDEF(VK_XBUTTON2); KEYDEF(VK_BACK); KEYDEF(VK_TAB); KEYDEF(VK_CLEAR); KEYDEF(VK_RETURN); KEYDEF(VK_SHIFT); KEYDEF(VK_CONTROL); KEYDEF(VK_MENU); KEYDEF(VK_PAUSE); KEYDEF(VK_CAPITAL); KEYDEF(VK_KANA); KEYDEF(VK_HANGEUL); KEYDEF(VK_HANGUL); KEYDEF(VK_JUNJA); KEYDEF(VK_FINAL); KEYDEF(VK_HANJA); KEYDEF(VK_KANJI); KEYDEF(VK_ESCAPE); KEYDEF(VK_CONVERT); KEYDEF(VK_NONCONVERT); KEYDEF(VK_ACCEPT); KEYDEF(VK_MODECHANGE); KEYDEF(VK_SPACE); KEYDEF(VK_PRIOR); KEYDEF(VK_NEXT); KEYDEF(VK_END); KEYDEF(VK_HOME); KEYDEF(VK_LEFT); KEYDEF(VK_UP); KEYDEF(VK_RIGHT); KEYDEF(VK_DOWN); KEYDEF(VK_SELECT); KEYDEF(VK_PRINT); KEYDEF(VK_EXECUTE); KEYDEF(VK_SNAPSHOT); KEYDEF(VK_INSERT); KEYDEF(VK_DELETE); KEYDEF(VK_HELP); KEYDEF(VK_LWIN); KEYDEF(VK_RWIN); KEYDEF(VK_APPS); KEYDEF(VK_SLEEP); KEYDEF(VK_NUMPAD0); KEYDEF(VK_NUMPAD1); KEYDEF(VK_NUMPAD2); KEYDEF(VK_NUMPAD3); KEYDEF(VK_NUMPAD4); KEYDEF(VK_NUMPAD5); KEYDEF(VK_NUMPAD6); KEYDEF(VK_NUMPAD7); KEYDEF(VK_NUMPAD8); KEYDEF(VK_NUMPAD9); KEYDEF(VK_MULTIPLY); KEYDEF(VK_ADD); KEYDEF(VK_SEPARATOR); KEYDEF(VK_SUBTRACT); KEYDEF(VK_DECIMAL); KEYDEF(VK_DIVIDE); KEYDEF(VK_F1); KEYDEF(VK_F2); KEYDEF(VK_F3); KEYDEF(VK_F4); KEYDEF(VK_F5); KEYDEF(VK_F6); KEYDEF(VK_F7); KEYDEF(VK_F8); KEYDEF(VK_F9); KEYDEF(VK_F10); KEYDEF(VK_F11); KEYDEF(VK_F12); KEYDEF(VK_F13); KEYDEF(VK_F14); KEYDEF(VK_F15); KEYDEF(VK_F16); KEYDEF(VK_F17); KEYDEF(VK_F18); KEYDEF(VK_F19); KEYDEF(VK_F20); KEYDEF(VK_F21); KEYDEF(VK_F22); KEYDEF(VK_F23); KEYDEF(VK_F24);
+	keymap['1'] = L"VK_1"; keymap['2'] = L"VK_2"; keymap['3'] = L"VK_3"; keymap['4'] = L"VK_4"; keymap['5'] = L"VK_5"; keymap['6'] = L"VK_6"; keymap['7'] = L"VK_7"; keymap['8'] = L"VK_8"; keymap['9'] = L"VK_9"; keymap['0'] = L"VK_0"; keymap['Q'] = L"VK_Q"; keymap['W'] = L"VK_W"; keymap['E'] = L"VK_E"; keymap['R'] = L"VK_R"; keymap['T'] = L"VK_T"; keymap['Y'] = L"VK_Y"; keymap['U'] = L"VK_U"; keymap['I'] = L"VK_I"; keymap['O'] = L"VK_O"; keymap['P'] = L"VK_P"; keymap['A'] = L"VK_A"; keymap['S'] = L"VK_S"; keymap['D'] = L"VK_D"; keymap['F'] = L"VK_F"; keymap['G'] = L"VK_G"; keymap['H'] = L"VK_H"; keymap['J'] = L"VK_J"; keymap['K'] = L"VK_K"; keymap['L'] = L"VK_L"; keymap['Z'] = L"VK_Z"; keymap['X'] = L"VK_X"; keymap['C'] = L"VK_C"; keymap['V'] = L"VK_V"; keymap['B'] = L"VK_B"; keymap['N'] = L"VK_N"; keymap['M'] = L"VK_M";
+	WMDEF(WM_LBUTTONDOWN); WMDEF(WM_LBUTTONUP); WMDEF(WM_LBUTTONDBLCLK); WMDEF(WM_RBUTTONDOWN); WMDEF(WM_RBUTTONUP); WMDEF(WM_RBUTTONDBLCLK); WMDEF(WM_MBUTTONDOWN); WMDEF(WM_MBUTTONUP); WMDEF(WM_MBUTTONDBLCLK); WMDEF(WM_MOUSEWHEEL); WMDEF(WM_DESTROY); WMDEF(WM_KEYDOWN); WMDEF(WM_KEYUP);
+	MKDEF(MK_CONTROL);MKDEF(MK_LBUTTON);MKDEF(MK_MBUTTON);MKDEF(MK_RBUTTON);MKDEF(MK_SHIFT); mkmap[0] = L"0";
+}
 
 void Init_image() //初始化
 {
+	initkeydef();
 	GdiplusStartupInput gdiplusStartupInput;
 	ULONG_PTR gdiplusToken;
 	GdiplusStartup(&gdiplusToken, &gdiplusStartupInput, nullptr);
@@ -102,12 +119,14 @@ void Init_image() //初始化
 	RECT rc;
 	GetClientRect(hCMD, &rc);
 	hRes.dc = hDC;
+	hRes.hwnd = hCMD;
 	hRes.w = int(scale*(rc.right - rc.left));
 	hRes.h = int(scale*(rc.bottom - rc.top));
 	hRes.regioninit((wchar_t*)L"cmd", hRes.w, hRes.h);
 	resmap[L"cmd"] = hRes; //把cmd添加到画布映射表中
 	hTarget = &resmap[L"cmd"];//getres("cmd"); //绘图默认指向cmd
-	//获取desktop大小以及绘图句柄
+	hOldTarget = nullptr;
+							  //获取desktop大小以及绘图句柄
 	hDC = GetDC(nullptr);
 	hRes.dc = hDC;
 	hRes.w = dm.dmPelsWidth;
@@ -200,7 +219,7 @@ void rotateres(wchar_t **argv)
 }
 void alphares(wchar_t **argv)
 {
-	double alpha = (double)wtoi(argv[5])/255;
+	double alpha = (double)wtoi(argv[5]) / 255;
 	//用于加载源位图
 	imageres * hRes = getres(argv[1]);
 	HBITMAP hSrc = copyhbitmap(hRes);
@@ -259,23 +278,129 @@ void alphares(wchar_t **argv)
 	DeleteDC(hDCMem);
 }
 
+thread_local wstring windowtag;
+thread_local HDC windowdc;
+thread_local HWND windowhwnd;
+
+LRESULT CALLBACK WindowProc(_In_  HWND hwnd,_In_  UINT uMsg,_In_  WPARAM wParam,_In_  LPARAM lParam)
+{
+	wchar_t info[1000]; wstring strinfo,varname=windowtag+L".wm";
+	GetEnvironmentVariableW(varname.c_str(), info, sizeof(info));
+	strinfo = wstring(info);
+	imageres *hRes = getres((wchar_t *)windowtag.c_str());
+	wstring ret;
+	switch (uMsg)
+	{
+	case WM_KEYDOWN:
+	case WM_KEYUP:
+		ret = keymap.count(wParam) ? keymap[wParam] : L"0";
+		strinfo += L" " + wmmap[uMsg] + L"," + ret + L"," + to_wstring(wParam);
+		break;
+	case WM_LBUTTONDOWN:
+	case WM_LBUTTONUP:
+	case  WM_LBUTTONDBLCLK:
+	case  WM_RBUTTONDOWN:
+	case  WM_RBUTTONUP:
+	case  WM_RBUTTONDBLCLK:
+	case  WM_MBUTTONDOWN:
+	case  WM_MBUTTONUP:
+	case  WM_MBUTTONDBLCLK:
+		strinfo += L" " + wmmap[uMsg] + L"," + mkmap[wParam] + L"," + to_wstring(LOWORD(lParam)) + L"," + to_wstring(HIWORD(lParam));
+		break;
+	case  WM_MOUSEWHEEL:
+		strinfo += L" " + wmmap[uMsg] + L"," + mkmap[LOWORD(wParam)] + L"," + to_wstring((short)HIWORD(wParam)) + L"," + to_wstring(LOWORD(lParam)) + L"," + to_wstring(HIWORD(lParam));
+		break;
+	case WM_PAINT:
+		BitBlt(windowdc, 0, 0, hRes->w, hRes->h, hRes->dc, 0, 0, SRCCOPY);
+		ValidateRect(windowhwnd, NULL);
+		break;
+	case WM_DESTROY:
+		strinfo += L" " + wmmap[uMsg];
+		PostQuitMessage(0);
+		break;
+	default:
+		return DefWindowProc(hwnd, uMsg, wParam, lParam);
+	}
+	SetEnvironmentVariableW(varname.c_str(), strinfo.c_str());
+	return 0;
+}
+void makewindow(wstring tag)
+{
+	HINSTANCE hInstance;
+	hInstance = GetModuleHandle(NULL);
+	WNDCLASS Draw;
+	Draw.cbClsExtra = 0;
+	Draw.cbWndExtra = 0;
+	Draw.hCursor = LoadCursor(hInstance, IDC_ARROW);;
+	Draw.hIcon = LoadIcon(hInstance, IDI_APPLICATION);;
+	Draw.lpszMenuName = NULL;
+	Draw.style = CS_HREDRAW | CS_VREDRAW;
+	Draw.hbrBackground = (HBRUSH)COLOR_WINDOW;
+	Draw.lpfnWndProc = WindowProc;
+	Draw.lpszClassName = "imagewindow";
+	Draw.hInstance = hInstance;
+
+
+	RegisterClass(&Draw);
+
+	HWND hwnd = CreateWindowW(
+		L"imagewindow",           //上面注册的类名，要完全一致      
+		tag.c_str(),  //窗口标题文字      
+		WS_OVERLAPPEDWINDOW, //窗口外观样式      
+		CW_USEDEFAULT,             //窗口相对于父级的X坐标      
+		CW_USEDEFAULT,             //窗口相对于父级的Y坐标      
+		600,                //窗口的宽度      
+		480,                //窗口的高度      
+		NULL,               //没有父窗口，为NULL      
+		NULL,               //没有菜单，为NULL      
+		hInstance,          //当前应用程序的实例句柄      
+		NULL);              //没有附加数据，为NULL      
+	windowtag = tag;
+	windowhwnd = hwnd;
+	windowdc = GetDC(hwnd);
+	imageres *hRes = getres((wchar_t *)windowtag.c_str());
+	hRes->hwnd = hwnd;
+							// 显示窗口      
+	ShowWindow(hwnd, SW_SHOW);
+	// 更新窗口      
+	UpdateWindow(hwnd);
+	// 消息循环  
+	MSG msg;
+	int cnt = 0;
+	while (GetMessage(&msg, NULL, 0, 0))
+	{
+		cnt++;
+		SetEnvironmentVariableW(L"cnt",to_wstring(cnt).c_str());
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
+	}
+}
+
 void image(wchar_t *CmdLine)
 {
 	//wcout << CmdLine << endl;
 	int argc;
 	wchar_t **argv;
 	argv = CommandLineToArgvW(CmdLine, &argc);
+	if (argv[0][0] == L'[') {
+		wstring arg0 = argv[0];
+		hOldTarget = hTarget;
+		//wcout << (wchar_t*)arg0.substr(1, arg0.length() - 2).c_str() << endl;
+		hTarget = getres((wchar_t*)arg0.substr(1, arg0.length() - 2).c_str());
+		argv = &argv[1];
+		argc--;
+	}
 	match(0, L"help")
 	{
 		printf(
 			"image\n"
-			"控制台显示图片 Ver 3.5 by Byaidu\n"
+			"控制台显示图片 Ver 3.6 by Byaidu\n"
 		);
 	}
 	match(0, L"load") //加载图元到同名画布，再将画布到画布映射表
 	{
-		wchar_t *tag = argv[1]; //画布名称
-		//销毁原来的画布，防止内存泄漏
+		wchar_t* tag = argv[1]; //画布名称
+							   //销毁原来的画布，防止内存泄漏
 		if (resmap.count(tag)) delres(tag);
 		imageres hRes(argc > 2 ? argv[2] : argv[1]);
 		hRes.regioninit(tag, hRes.w, hRes.h);
@@ -300,20 +425,32 @@ void image(wchar_t *CmdLine)
 		bitmap.Save(argv[2], &Clsid, nullptr);
 		DeleteObject(hSrc);
 	}
+	match(0, L"show")
+	{
+		imageres *hRes=getres(argv[1]);
+		thread windowtask(makewindow, wstring(argv[1]));
+		windowtask.detach();
+		Sleep(20);
+	}
+	match(0, L"hide")
+	{
+		imageres *hRes = getres(argv[1]);
+		ShowWindow(hRes->hwnd, SW_HIDE);
+	}
 	match(0, L"target") //更改绘图目标
 	{
 		hTarget = getres(argv[1]);
 	}
 	match(0, L"buffer") //新建一个buffer对象
 	{
-		wchar_t *tag = argv[1];
+		wchar_t* tag = argv[1];
 		//销毁原来的画布，防止内存泄漏
 		if (resmap.count(tag)) delres(tag);
 		imageres hRes;
 		hRes.dc = CreateCompatibleDC(hTarget->dc);
-		HBITMAP hBitmap = CreateCompatibleBitmap(hTarget->dc,argc>2?wtoi(argv[2]):hTarget->w,argc>3?wtoi(argv[3]):hTarget->h);
+		HBITMAP hBitmap = CreateCompatibleBitmap(hTarget->dc, argc>2 ? wtoi(argv[2]) : hTarget->w, argc>3 ? wtoi(argv[3]) : hTarget->h);
 		hRes.oldbmp = (HBITMAP)SelectObject(hRes.dc, hBitmap);
-		int color = argc>6?RGB(wtoi(argv[4]),wtoi(argv[5]),wtoi(argv[6])):RGB(255,255,255);
+		int color = argc>6 ? RGB(wtoi(argv[4]), wtoi(argv[5]), wtoi(argv[6])) : RGB(255, 255, 255);
 		colorregion(hRes.dc, color, 0, 0, hTarget->w - 1, hTarget->h - 1);
 		hRes.w = hTarget->w;
 		hRes.h = hTarget->h;
@@ -324,7 +461,7 @@ void image(wchar_t *CmdLine)
 	match(0, L"resize") //缩放
 	{
 		imageres * hRes = getres(argv[1]);
-		match(1,L"cmd")
+		match(1, L"cmd")
 		{
 			//防止快速编辑功能刷掉图像
 			// 获取标准输入输出设备句柄  
@@ -337,7 +474,7 @@ void image(wchar_t *CmdLine)
 			CONSOLE_CURSOR_INFO cursor_info = { (DWORD)25, FALSE };
 			SetConsoleCursorInfo(hOut, &cursor_info);
 
-			RECT rc,rc2;
+			RECT rc, rc2;
 			SetScrollRange(hCMD, 0, 0, 0, 1);
 			SetScrollRange(hCMD, 1, 0, 0, 1);
 			GetClientRect(hCMD, &rc);
@@ -354,22 +491,23 @@ void image(wchar_t *CmdLine)
 			Sleep(10);
 			hRes->w = (int)wtoi(argv[2]);
 			hRes->h = (int)wtoi(argv[3]);
-		}else{
-			HDC hDCMem = CreateCompatibleDC(hRes->dc);
-			HBITMAP hBitmap = CreateCompatibleBitmap(hRes->dc, wtoi(argv[2]), wtoi(argv[3]));
-			HBITMAP oldbmp = (HBITMAP)SelectObject(hDCMem, hBitmap);
-			StretchBlt(hDCMem, 0, 0, wtoi(argv[2]), wtoi(argv[3]), hRes->dc, 0, 0, hRes->w, hRes->h, SRCCOPY);
-			//销毁原来的画布，防止内存泄漏
-			HBITMAP bmp = (HBITMAP)SelectObject(hRes->dc, hRes->oldbmp);
-			DeleteObject(bmp);
-			DeleteDC(hRes->dc);
-			//替换原来的画布
-			hRes->oldbmp = oldbmp;
-			hRes->dc = hDCMem;
-			hRes->w = wtoi(argv[2]);
-			hRes->h = wtoi(argv[3]);
 		}
-		hRes->regioninit(argv[1], hRes->w, hRes->h);
+else {
+	HDC hDCMem = CreateCompatibleDC(hRes->dc);
+	HBITMAP hBitmap = CreateCompatibleBitmap(hRes->dc, wtoi(argv[2]), wtoi(argv[3]));
+	HBITMAP oldbmp = (HBITMAP)SelectObject(hDCMem, hBitmap);
+	StretchBlt(hDCMem, 0, 0, wtoi(argv[2]), wtoi(argv[3]), hRes->dc, 0, 0, hRes->w, hRes->h, SRCCOPY);
+	//销毁原来的画布，防止内存泄漏
+	HBITMAP bmp = (HBITMAP)SelectObject(hRes->dc, hRes->oldbmp);
+	DeleteObject(bmp);
+	DeleteDC(hRes->dc);
+	//替换原来的画布
+	hRes->oldbmp = oldbmp;
+	hRes->dc = hDCMem;
+	hRes->w = wtoi(argv[2]);
+	hRes->h = wtoi(argv[3]);
+}
+hRes->regioninit(argv[1], hRes->w, hRes->h);
 	}
 	match(0, L"cls")
 	{
@@ -399,7 +537,7 @@ void image(wchar_t *CmdLine)
 		else
 		{
 			match(4, L"trans")
-				TransparentBlt(hTarget->dc, wtoi(argv[2]), wtoi(argv[3]), hRes->w, hRes->h, hRes->dc, 0, 0, hRes->w, hRes->h, argc==8?RGB(wtoi(argv[5]),wtoi(argv[6]),wtoi(argv[7])):RGB(255, 255, 255));
+				TransparentBlt(hTarget->dc, wtoi(argv[2]), wtoi(argv[3]), hRes->w, hRes->h, hRes->dc, 0, 0, hRes->w, hRes->h, argc == 8 ? RGB(wtoi(argv[5]), wtoi(argv[6]), wtoi(argv[7])) : RGB(255, 255, 255));
 			match(4, L"alpha")
 				alphares(argv);
 		}
@@ -407,7 +545,7 @@ void image(wchar_t *CmdLine)
 	match(0, L"text")
 	{
 		//显示两次才会刷新出来，大概是个bug
-		for (int i = 0; i < 2;i++) TextOutW(hTarget->dc, wtoi(argv[2]), wtoi(argv[3]), argv[1], wcslen(argv[1]));
+		for (int i = 0; i < 2; i++) TextOutW(hTarget->dc, wtoi(argv[2]), wtoi(argv[3]), argv[1], wcslen(argv[1]));
 	}
 	match(0, L"font")
 	{
@@ -433,6 +571,47 @@ void image(wchar_t *CmdLine)
 			SelectObject(hTarget->dc, hFont);
 		}
 	}
+	match(0, L"pen")
+	{
+		HPEN gPen;
+		if (wtoi(argv[1]) == -1)
+			gPen = (HPEN)GetStockObject(NULL_PEN);
+		else
+			gPen = CreatePen(PS_SOLID, argc>4 ? wtoi(argv[4]) : 1, RGB(wtoi(argv[1]), wtoi(argv[2]), wtoi(argv[3])));
+		HPEN oPen = (HPEN)SelectObject(hTarget->dc, gPen);
+		DeleteObject(oPen);
+	}
+	match(0, L"brush")
+	{
+		HBRUSH gBrush;
+		if (wtoi(argv[1]) == -1)
+			gBrush = (HBRUSH)GetStockObject(NULL_BRUSH);
+		else
+			gBrush = CreateSolidBrush(RGB(wtoi(argv[1]), wtoi(argv[2]), wtoi(argv[3])));
+		HBRUSH oBrush = (HBRUSH)SelectObject(hTarget->dc, gBrush);
+		DeleteObject(oBrush);
+	}
+	match(0, L"line")
+	{
+		MoveToEx(hTarget->dc, wtoi(argv[1]), wtoi(argv[2]), NULL);
+		LineTo(hTarget->dc, wtoi(argv[3]), wtoi(argv[4]));
+	}
+	match(0, L"ellipse")
+	{
+		Ellipse(hTarget->dc, wtoi(argv[1]), wtoi(argv[2]), wtoi(argv[3]), wtoi(argv[4]));
+	}
+	match(0, L"polygon")
+	{
+		POINT polypt[100];
+		int cnt = argc - 1;
+		for (int i = 1; i < argc; i++)
+		{
+			int x, y;
+			swscanf(argv[i], L"%d,%d", &x, &y);
+			polypt[i - 1] = POINT{ x,y };
+		}
+		Polygon(hTarget->dc, polypt, cnt);
+	}
 	match(0, L"sleep")
 	{
 		Sleep(wtoi(argv[1]));
@@ -452,7 +631,7 @@ void image(wchar_t *CmdLine)
 	}
 	match(0, L"import")
 	{
-		wchar_t *tag = argv[1];
+		wchar_t* tag = argv[1];
 		//销毁原来的画布，防止内存泄漏
 		if (resmap.count(tag)) delres(tag);
 		imageres hRes;
@@ -476,7 +655,7 @@ void image(wchar_t *CmdLine)
 	match(0, L"getpix")
 	{
 		wchar_t info[100];
-		COLORREF color=GetPixel(hTarget->dc, wtoi(argv[1]), wtoi(argv[2]));
+		COLORREF color = GetPixel(hTarget->dc, wtoi(argv[1]), wtoi(argv[2]));
 		swprintf(info, L"%d %d %d", GetRValue(color), GetGValue(color), GetBValue(color));
 		SetEnvironmentVariableW(L"image", info);
 	}
@@ -538,10 +717,10 @@ void image(wchar_t *CmdLine)
 				/*
 				if (Rec.EventType == KEY_EVENT)
 				{
-					if (Rec.Event.KeyEvent.bKeyDown == 1)
-					{
+				if (Rec.Event.KeyEvent.bKeyDown == 1)
+				{
 
-					}
+				}
 				}
 				*/
 			}
@@ -569,7 +748,8 @@ void image(wchar_t *CmdLine)
 			SetEnvironmentVariableW(L"image", info);
 			swprintf(info, L"%d", ret);
 			SetEnvironmentVariableW(L"errorlevel", info);
-		}else{
+		}
+		else {
 			//在图元索引表中查找
 			wstring ret = query(resmap[L"cmd"].region.p, x, y);
 			swprintf(info, L"%d %d %s", x, y, ret.c_str());
@@ -594,7 +774,32 @@ void image(wchar_t *CmdLine)
 	{
 		_wsystem(argv[1]);
 	}
+	match(0, L"thread")
+	{
+		thread windowtask([argv]() {_wsystem(argv[1]); });
+		windowtask.detach();
+	}
+	match(0, L"sound")
+	{
+		match(1, L"-1")
+		{
+			PlaySoundW(NULL, NULL, SND_FILENAME);
+		}
+	else
+	{
+		int timer = wtoi(argv[2]);
+		if (timer < 0)
+			PlaySoundW(argv[1], NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
+		else
+			for (int i = 1; i <= timer; i++)
+				PlaySoundW(argv[1], NULL, SND_FILENAME | SND_ASYNC);
+	}
+	}
 	//todo:支持鼠标键盘同时控制
+	if (hOldTarget != nullptr) {
+		hTarget = hOldTarget;
+		hOldTarget = nullptr;
+	}
 	LocalFree(argv);
 	return;
 }

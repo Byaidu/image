@@ -51,6 +51,7 @@ void Init_regionmgr() //初始化
 //合并剪枝 
 void singleunion(P *p)
 {
+	//子节点和父节点表示同一区域
 	if (p->r->single == 1 && p->l->single == 1 && p->r->src == p->l->src&&
 		p->r->x1 - p->l->x1 == p->r->x0 - p->l->x0&&
 		p->r->y1 - p->l->y1 == p->r->y0 - p->l->y0)
@@ -62,6 +63,7 @@ void singleunion(P *p)
 		//todo:delete point
 		return;
 	}
+	//左儿子和右儿子的内容可以拼到一起
 	if (p->r->single &&p->r->x1== p->x1&&p->r->y1 == p->y1&&p->r->x2 == p->x2&&p->r->y2 == p->y2)
 	{
 		p->x0 = p->r->x0;
