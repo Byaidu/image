@@ -35,6 +35,7 @@ using namespace Gdiplus;
 
 struct imageres { //画布结构体
 	HDC dc;
+	bool needupdate=0;
 	HWND hwnd;
 	HBITMAP oldbmp;
 	int w, h;
@@ -284,7 +285,7 @@ thread_local HWND windowhwnd;
 
 LRESULT CALLBACK WindowProc(_In_  HWND hwnd,_In_  UINT uMsg,_In_  WPARAM wParam,_In_  LPARAM lParam)
 {
-	wchar_t info[1000]; wstring strinfo,varname=windowtag+L".wm";
+	wchar_t info[1000]; wstring strinfo, varname = windowtag + L".wm";
 	GetEnvironmentVariableW(varname.c_str(), info, sizeof(info));
 	strinfo = wstring(info);
 	imageres *hRes = getres((wchar_t *)windowtag.c_str());
@@ -294,7 +295,7 @@ LRESULT CALLBACK WindowProc(_In_  HWND hwnd,_In_  UINT uMsg,_In_  WPARAM wParam,
 	case WM_KEYDOWN:
 	case WM_KEYUP:
 		ret = keymap.count(wParam) ? keymap[wParam] : L"0";
-		strinfo += L" " + wmmap[uMsg] + L"," + ret + L"," + to_wstring(wParam);
+		strinfo += L" " + wmmap[uMsg] + L"." + ret + L"." + to_wstring(wParam);
 		break;
 	case WM_LBUTTONDOWN:
 	case WM_LBUTTONUP:
@@ -305,10 +306,10 @@ LRESULT CALLBACK WindowProc(_In_  HWND hwnd,_In_  UINT uMsg,_In_  WPARAM wParam,
 	case  WM_MBUTTONDOWN:
 	case  WM_MBUTTONUP:
 	case  WM_MBUTTONDBLCLK:
-		strinfo += L" " + wmmap[uMsg] + L"," + mkmap[wParam] + L"," + to_wstring(LOWORD(lParam)) + L"," + to_wstring(HIWORD(lParam));
+		strinfo += L" " + wmmap[uMsg] + L"." + mkmap[wParam] + L"." + to_wstring(LOWORD(lParam)) + L"." + to_wstring(HIWORD(lParam)) + L"." + query(getres((wchar_t*)windowtag.c_str())->region.p, LOWORD(lParam), HIWORD(lParam));
 		break;
 	case  WM_MOUSEWHEEL:
-		strinfo += L" " + wmmap[uMsg] + L"," + mkmap[LOWORD(wParam)] + L"," + to_wstring((short)HIWORD(wParam)) + L"," + to_wstring(LOWORD(lParam)) + L"," + to_wstring(HIWORD(lParam));
+		strinfo += L" " + wmmap[uMsg] + L"." + mkmap[LOWORD(wParam)] + L"." + to_wstring((short)HIWORD(wParam)) + L"." + to_wstring(LOWORD(lParam)) + L"." + to_wstring(HIWORD(lParam));
 		break;
 	case WM_PAINT:
 		BitBlt(windowdc, 0, 0, hRes->w, hRes->h, hRes->dc, 0, 0, SRCCOPY);
@@ -428,6 +429,7 @@ void image(wchar_t *CmdLine)
 	match(0, L"show")
 	{
 		imageres *hRes=getres(argv[1]);
+		match(1, L"cmd") {} else hRes->needupdate = 1;
 		thread windowtask(makewindow, wstring(argv[1]));
 		windowtask.detach();
 		Sleep(20);
@@ -435,6 +437,7 @@ void image(wchar_t *CmdLine)
 	match(0, L"hide")
 	{
 		imageres *hRes = getres(argv[1]);
+		hRes->needupdate = 0;
 		ShowWindow(hRes->hwnd, SW_HIDE);
 	}
 	match(0, L"target") //更改绘图目标
@@ -452,8 +455,8 @@ void image(wchar_t *CmdLine)
 		hRes.oldbmp = (HBITMAP)SelectObject(hRes.dc, hBitmap);
 		int color = argc>6 ? RGB(wtoi(argv[4]), wtoi(argv[5]), wtoi(argv[6])) : RGB(255, 255, 255);
 		colorregion(hRes.dc, color, 0, 0, hTarget->w - 1, hTarget->h - 1);
-		hRes.w = hTarget->w;
-		hRes.h = hTarget->h;
+		hRes.w = argc > 2 ? wtoi(argv[2]) : hTarget->w;
+		hRes.h = argc > 3 ? wtoi(argv[3]) : hTarget->h;
 		//把buffer添加到画布调用表中
 		hRes.regioninit(tag, hRes.w, hRes.h);
 		resmap[tag] = hRes;
@@ -759,6 +762,13 @@ hRes->regioninit(argv[1], hRes->w, hRes->h);
 		}
 		SetConsoleMode(hIn, oldConMode);
 	}
+	match(0, L"picatom")
+	{
+		wchar_t info[100];
+		wstring ret = query(getres(argv[1])->region.p, wtoi(argv[2]), wtoi(argv[3]));
+		swprintf(info, L"%s", ret.c_str());
+		SetEnvironmentVariableW(L"image", info);
+	}
 	match(0, L"debug")
 	{
 		imageres *hRes = getres((wchar_t*)L"cmd");
@@ -788,6 +798,7 @@ hRes->regioninit(argv[1], hRes->w, hRes->h);
 	else
 	{
 		int timer = wtoi(argv[2]);
+		wcout << argv[1] << endl;
 		if (timer < 0)
 			PlaySoundW(argv[1], NULL, SND_FILENAME | SND_ASYNC | SND_LOOP);
 		else
@@ -795,7 +806,19 @@ hRes->regioninit(argv[1], hRes->w, hRes->h);
 				PlaySoundW(argv[1], NULL, SND_FILENAME | SND_ASYNC);
 	}
 	}
-	//todo:支持鼠标键盘同时控制
+	match(0, L"tick")
+	{
+		SetEnvironmentVariableW(L"tick.start", to_wstring(GetTickCount()).c_str());
+		thread tickthread([]() {while (1)
+		{
+			wchar_t info[100];
+			GetEnvironmentVariableW(L"tick.start", info, sizeof(info));
+			SetEnvironmentVariableW(L"tick", to_wstring(GetTickCount() - wtoi(info)).c_str());
+			Sleep(10);
+		}});
+		tickthread.detach();
+	}
+	if (hTarget->needupdate) InvalidateRect(hTarget->hwnd, NULL, 0);
 	if (hOldTarget != nullptr) {
 		hTarget = hOldTarget;
 		hOldTarget = nullptr;

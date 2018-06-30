@@ -1,8 +1,8 @@
 ﻿  image.cpp
     正在创建库 C:\Users\apple\source\repos\image\Release\image.lib 和对象 C:\Users\apple\source\repos\image\Release\image.exp
   正在生成代码
-  1 of 1010 functions ( 0.1%) were compiled, the rest were copied from previous compilation.
+  2 of 1102 functions ( 0.2%) were compiled, the rest were copied from previous compilation.
     0 functions were new in current compilation
-    1 functions had inline decision re-evaluated but remain unchanged
+    0 functions had inline decision re-evaluated but remain unchanged
   已完成代码的生成
   image.vcxproj -> C:\Users\apple\source\repos\image\Release\image.dll

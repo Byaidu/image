@@ -8,10 +8,11 @@ set image=[cmd] draw bin 0 0
 set image=[desktop] draw bin 0 0
 set image=[box] draw bin 0 0
 set image=show box
+set image=[box] draw bin 100 100
 rem set image=hide cmd
 set box.wm= 
 :loop
-echo.!box.wm!
+if not "!box.wm!"==" " echo.!box.wm!
 set box.wm= 
 set image=sleep 100
 goto loop
