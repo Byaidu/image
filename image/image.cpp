@@ -829,6 +829,22 @@ void image(wchar_t *CmdLine)
 		}});
 		tickthread.detach();
 	}
+	match(0, L"setvar")
+	{
+		HANDLE hMap = ::OpenFileMappingW(FILE_MAP_ALL_ACCESS, 0, argv[1]);
+		if (NULL == hMap) hMap = ::CreateFileMappingW(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, 10000, argv[1]);
+		HANDLE pBuffer = ::MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+		wchar_t info[10000];
+		GetEnvironmentVariableW(argv[1], info, sizeof(info));
+		wcscpy((wchar_t*)pBuffer, info);
+	}
+	match(0, L"getvar")
+	{
+		HANDLE hMap = ::OpenFileMappingW(FILE_MAP_ALL_ACCESS, 0, argv[1]);
+		if (NULL == hMap) hMap = ::CreateFileMappingW(INVALID_HANDLE_VALUE, NULL, PAGE_READWRITE, 0, 10000, argv[1]);
+		HANDLE pBuffer = ::MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
+		SetEnvironmentVariableW(argv[1], (wchar_t*)pBuffer);
+	}
 	if (hTarget->needupdate) InvalidateRect(hTarget->hwnd, NULL, 0);
 	if (hOldTarget != nullptr) {
 		hTarget = hOldTarget;

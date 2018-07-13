@@ -1,6 +1,8 @@
 @echo off
 %1start /b "" "%~dp0cmd.exe" "/c %~fs0 :"&exit
 setlocal EnableDelayedExpansion
+set msg=hello
+set image=setvar msg
 :loop
 set /a color=(color+1)%%256
 set image=buffer buf 100 100 0 0 !color!
