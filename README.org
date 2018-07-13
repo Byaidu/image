@@ -3,34 +3,75 @@
 
 3.5版本的完整帮助文档在www.bathome.net/viewthread.php?tid=47990&page=1&extra=#pid208060
 
-以下为没有更新的3.1版本帮助文档
-
-| 命令                             | 作用                                                   |
-|----------------------------------+--------------------------------------------------------|
-| help                             | 显示帮助                                               |
-| load file [tag]                  | 申请一块画布tag，并加载图元到画布tag                   |
-| unload tag                       | 删除画布tag                                            |
-| save file tag                    | 将画布tag的内容存储到file中                            |
-| target tag                       | 切换当前绘图目标为画布tag                              |
-| buffer tag                       | 申请一块画布tag                                        |
-| resize tag w h                   | 将画布tag缩放到w*h的大小，如果目标cmd，则会同时将控制台设置为最适合绘图的状态|
-| cls                              | 清空画布cmd的内容                                      |
-| rotate tag degree                | 将画布tag顺时针旋转degree度                            |
-| draw tag x y [trans \vert{} alpha] | 将画布tag绘制到当前绘图目标的x,y位置上               |
-| info tag                         | 将画布tag的宽和高存储到变量image                       |
-| export                           | 将画布cmd的句柄存储到变量image                         |
-| import handle tag                | 通过句柄将另一个控制台的画布cmd映射到此控制台的画布tag |
-| getpix tag x y                   | 将画布tag上x,y位置的rgb值存储到变量image               |
-| setpix tag x y r g b             | 设置画布tag上x,y位置的rgb值                            |
-| sleep time                       | 延时time毫秒                                           |
-| list file                        | 执行image指令脚本file                                  |
-| debug                            | 以图形形式输出图元索引树，用于查看画布cmd上的各个图元  |
-| font r g b w h                   | 设置当前绘图目标所用字体的rgb值和大小                  |
-| text string                      | 在当前绘图目标的x,y的位置上输出字符串string            |
-| mouse time [region1] [region2] ...| 捕获鼠标坐标及事件，坐标以像素为单位，时间以毫秒为单位|
-|                                  | 若time>=0，当发生点击事件或时间超过限制时会将鼠标坐标x,y以及坐标在画布cmd上对应的图元tag存储到变量image，并将图元tag单独再存储到变量errorlevel|
-|                                  | 若time<0，不设置时间限制                               |
-|                                  | 若设置了region，那么返回的的就不是图元tag而是region序号，如果鼠标坐标不在任何一个指定的region中，则返回序号0|
-|                                  | region应以如下的形式给出：x1,y1,x2,y2                  |
+1.关于本文档
+作者：bbaa -Te Studio 
+文档修改时间：2018-7-7
+2.image基础文件说明
+2.1 cmd.exe
+修改版Cmd 用于加载Image.dll
+2.2 init.dll
+加载同目录下的所有Dll
+2.3 image.dll
+image3.0模块核心
+Github项目地址
+https://github.com/Byaidu/image/
+3.基础语法
+3.1 调用方法
+3.1.1 基础调用
+通过命令 Set image=<Command> [argv1 argv2......
+3.1.2 复古调用
+新建image.bat
+内容
+即可通过普通的调用第三方的方式来调用:
+image [argv1 [argv2......
+此方法会影响效率
+3.2 基础命令
+3.2.1 help
+显示帮助
+3.2.2 load
+语法:load <tag> file
+@param tag Tag名称
+@param file 文件路径(也许不支持中文)
+作用:新建图元[ 图元：方便判断碰撞箱的的一种介质]并将file文件绘制到名为[tag]的图元并将图元绘制到名为[tag]的画布上
+3.2.3 unload
+语法:unload <tag>
+@param tag Tag名称
+作用：删除画布[tag]并释放内存
+3.2.4 save
+语法: save <tag> <file>
+@param tag Tag名称
+@param file 文件路径
+作用保存画布tag的内容到file
+3.2.5 target
+语法·:target <tag>
+@param tag Tag名称
+作用:切换当前画图目标到tag
+3.2.6 buffer
+语法:buffer <tag> [width] [height] [r] [g] [b]
+@param tag Tag名称
+@param width 宽
+@param height 高
+@param r/g/b RGB颜色的R值G值B值
+作用: 新建画布tag，并新建一个颜色为rgb（默认为白色）、大小为w*h（默认为当前绘图目标的大小）图元tag，再将图元tag绘制到画布tag
+3.2.7 resize
+语法: resize <tag> <width> <height>
+@param tag Tag名称
+@param width 宽
+@param height 高
+作用: 将画布tag缩放到width*height的大小，如果绘图目标为cmd，则会同时将控制台设置为最适合绘图的状态
+3.2.8 draw
+语法: draw <tag> <x> <y> [trans [r] [g] [b] | alpha <a>] 
+@param tag Tag名称
+@param x/y 绘图位置XY
+@param trans 将颜色为rgb的像素变为透明
+@param alpha
+	*a 透明度
+作用: 将画布tag绘制到当前绘图目标的x,y位置上
+若指定了trans，则以rgb为透明色（默认为白色）
+若指定了alpha，则以a为透明度
+3.2.9 font
+语法:font [r] [g] [b] [width] [height] 0 0 [字体粗细(400)] [斜体(0)] [下划线(0)] [删除线(0)] [字体名]
+作用:设置当前绘图目标所用字体的rgb值和大小
+注:
 
 [[https://images2018.cnblogs.com/blog/1123683/201802/1123683-20180223134856925-1663767861.jpg]]
