@@ -244,45 +244,16 @@ Tag.wm的值是一个以空格开头的字符串，以点为参数分割符，�
 
 
 | 事件名称        | 事件格式        | 例子            | 意思            |
-
-| WM\_KEYDOWN     | 事件名.按键名.虚拟键码 | WM\_KEYDOWN.VK\ | 键盘按键按下 |
-|                 |                 | _A.65           |                 |
-
-| WM\_KEYUP       |                 | WM\_KEYUP.VK\_A | 键盘按键松开    |
-|                 |                 | .65             |                 |
-
-| WM\_LBUTTONDOWN | 事件名.按键名.按键时的X轴位 | WM\_LBUTTONDOWN | 鼠标左键按下 |
-|                 | 置.按键时的Y轴位置.图元名称 | .MK\_LBUTTON.20 |     |
-|                 |                 | .20.doc         |                 |
-
-| WM\_LBUTTONUP   |                 | WM\_LBUTTONUP.M | 鼠标左键松开    |
-|                 |                 | K\_LBUTTON.20.2 |                 |
-|                 |                 | 0.doc           |                 |
-
-| WM\_RBUTTONDOWN |                 | WM\_RBUTTONDOWN | 鼠标右键按下    |
-|                 |                 | .MK\_RBUTTON.20 |                 |
-|                 |                 | .20.doc         |                 |
-
-| WM\_RBUTTONUP   |                 | WM\_RBUTTONUP.M | 鼠标右键松开    |
-|                 |                 | K\_RBUTTON.20.2 |                 |
-|                 |                 | 0.doc           |                 |
-
-| WM\_MBUTTONDOWN |                 | WM\_MBUTTONDOWN | 鼠标中键按下    |
-|                 |                 | .MK\_MBUTTON.20 |                 |
-|                 |                 | .20.doc         |                 |
-
-| WM\_MBUTTONUP   |                 | WM\_MBUTTONUP.M | 鼠标中键松开    |
-|                 |                 | K\_MBUTTON.20.2 |                 |
-|                 |                 | 0.doc           |                 |
-
-| WM\_MOUSEWHEEL  | 事件名.虚拟键名.位移.鼠标相 | WM\_MOUSEWHEEL. | 鼠标滚轮滚动 |
-|                 | 对屏幕的X轴位置. | MK\_SHIF       |                 |
-|                 |                 |                 |                 |
-|                 | 鼠标相对屏幕的Y轴位置 | T.120.300.231 |             |
-
-| WM\_MOUSEMOVE   | 事件名.X.Y.图元名称 | WM\_MOUSEMOVE.2 | 鼠标移动    |
-|                 |                 | .2.doc          |                 |
-
+| WM\_KEYDOWN     | 事件名.按键名.虚拟键码 | WM\_KEYDOWN.VK\_A.65 | 键盘按键按下 |
+| WM\_KEYUP       |                 | WM\_KEYUP.VK\_A.65 | 键盘按键松开    |
+| WM\_LBUTTONDOWN | 事件名.按键名.按键时的X轴位置.按键时的Y轴位置.图元名称 | WM\_LBUTTONDOWN.MK\_LBUTTON.20.20.doc | 鼠标左键按下 |
+| WM\_LBUTTONUP   |                 | WM\_LBUTTONUP.MK\_LBUTTON.20.20.doc | 鼠标左键松开    |
+| WM\_RBUTTONDOWN |                 | WM\_RBUTTONDOWN.MK\_RBUTTON.20.20.doc | 鼠标右键按下    |
+| WM\_RBUTTONUP   |                 | WM\_RBUTTONUP.MK\_RBUTTON.20.20.doc | 鼠标右键松开    |
+| WM\_MBUTTONDOWN |                 | WM\_MBUTTONDOWN.MK\_MBUTTON.20.20.doc | 鼠标中键按下    |
+| WM\_MBUTTONUP   |                 | WM\_MBUTTONUP.MK\_MBUTTON.20.20.doc | 鼠标中键松开    |
+| WM\_MOUSEWHEEL  | 事件名.虚拟键名.位移.鼠标相对屏幕的X轴位置.鼠标相对屏幕的Y轴位置 | WM\_MOUSEWHEEL.MK\_SHIFMK\_SHIFT.120.300.231 | 鼠标滚轮滚动 |
+| WM\_MOUSEMOVE   | 事件名.X.Y.图元名称 | WM\_MOUSEMOVE.2.2.doc | 鼠标移动    |
 | WM\_DESTROY     | 无              | WM\_DESTROY     | 窗口销毁        |
 
 
