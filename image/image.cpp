@@ -392,6 +392,15 @@ void makewindow(wstring tag)
 		DispatchMessage(&msg);
 	}
 }
+void disablescrollbar()
+{
+	while (1)
+	{
+		Sleep(100);
+		SetScrollRange(hCMD, 0, 0, 0, 1);
+		SetScrollRange(hCMD, 1, 0, 0, 1);
+	}
+}
 
 void image(wchar_t *CmdLine)
 {
@@ -512,12 +521,10 @@ void image(wchar_t *CmdLine)
 			//printf("C:%dx%d\n", rc.right - rc.left, rc.bottom - rc.top);
 			//printf("W:%dx%d\n", rc2.right - rc2.left, rc2.bottom - rc2.top);
 			MoveWindow(hCMD, rc2.left, rc2.top, w, h, 0);
-			Sleep(10);
-			SetScrollRange(hCMD, 0, 0, 0, 1);
-			SetScrollRange(hCMD, 1, 0, 0, 1);
-			Sleep(10);
 			hRes->w = (int)wtoi(argv[2]);
 			hRes->h = (int)wtoi(argv[3]);
+			thread scrollbartask(disablescrollbar);
+			scrollbartask.detach();
 		}
 	else {
 		HDC hDCMem = CreateCompatibleDC(hRes->dc);
@@ -872,7 +879,20 @@ void image(wchar_t *CmdLine)
 		imageres * hRes = getres(argv[1]);
 		SendMessageW(hRes->hwnd, WM_GETMSG, 0, 0);
 	}
-	if (hTarget->needupdate == 1) InvalidateRect(hTarget->hwnd, NULL, 0);
+	match(0, L"full")
+	{
+		imageres * hRes = getres(argv[1]);
+		LONG_PTR Style = ::GetWindowLongPtr(hRes->hwnd, GWL_STYLE);
+		Style = Style & ~WS_CAPTION &~WS_SYSMENU &~WS_SIZEBOX;
+		::SetWindowLongPtr(hRes->hwnd, GWL_STYLE, Style);
+		ShowWindow(hRes->hwnd, SW_MAXIMIZE);
+		match(1, L"cmd")
+		{
+			thread scrollbartask(disablescrollbar);
+			scrollbartask.detach();
+		}
+	}
+	if (hTarget->needupdate == 1||(resmap.count(argv[1])!=0&& getres(argv[1])->needupdate == 1)) InvalidateRect(hTarget->hwnd, NULL, 0);
 	if (hOldTarget != nullptr) {
 		hTarget = hOldTarget;
 		hOldTarget = nullptr;

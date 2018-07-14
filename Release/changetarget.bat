@@ -7,13 +7,14 @@ set image=load bin bin.bmp
 set image=[cmd] draw bin 0 0
 set image=[box] draw bin 0 0
 set image=show box
-set image=[box] draw bin 100 100
+set image=target box
+set image=draw bin 100 100
 rem set image=hide cmd
-set box.wm= 
 :loop
+set image=sleep 10
 set image=getmsg box
-if not "!box.wm!"==" " for %%a in (!box.wm!) do (
-	ECHO %%a
- if "%%a"=="WM_DESTROY" exit
+for %%a in (!box.wm!) do for /f "tokens=1-8 delims=." %%b in ("%%a") do (
+  if "%%b"=="WM_MOUSEMOVE" set image=line 0 0 %%c %%d
+  if "%%b"=="WM_DESTROY" exit
 )
 goto loop
