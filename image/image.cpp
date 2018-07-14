@@ -20,6 +20,7 @@ image
 using namespace std;
 using namespace Gdiplus;
 
+#define WM_GETMSG (WM_USER+100)
 #define KEYDEF(key) (keymap[key]=L#key)
 #define WMDEF(key) (wmmap[key]=L#key)
 #define MKDEF(key) (mkmap[key]=L#key)
@@ -285,13 +286,17 @@ thread_local HWND windowhwnd;
 
 LRESULT CALLBACK WindowProc(_In_  HWND hwnd, _In_  UINT uMsg, _In_  WPARAM wParam, _In_  LPARAM lParam)
 {
-	wchar_t info[10000]; wstring strinfo, varname = windowtag + L".wm";
-	GetEnvironmentVariableW(varname.c_str(), info, sizeof(info));
+	wchar_t info[10000]; wstring strinfo, varname = windowtag + L".wm" , lockvarname = windowtag + L".lockwm";
+	GetEnvironmentVariableW(lockvarname.c_str(), info, sizeof(info));
 	strinfo = wstring(info);
 	imageres *hRes = getres((wchar_t *)windowtag.c_str());
 	wstring ret;
 	switch (uMsg)
 	{
+	case WM_GETMSG:
+		SetEnvironmentVariableW(varname.c_str(), strinfo.c_str());
+		strinfo = wstring(L"");
+		break;
 	case WM_KEYDOWN:
 	case WM_KEYUP:
 		ret = keymap.count(wParam) ? keymap[wParam] : L"0";
@@ -320,6 +325,7 @@ LRESULT CALLBACK WindowProc(_In_  HWND hwnd, _In_  UINT uMsg, _In_  WPARAM wPara
 		break;
 	case WM_DESTROY:
 		strinfo += L" " + wmmap[uMsg];
+		SetEnvironmentVariableW(varname.c_str(), strinfo.c_str());
 		PostQuitMessage(0);
 		break;
 	default:
@@ -331,7 +337,7 @@ LRESULT CALLBACK WindowProc(_In_  HWND hwnd, _In_  UINT uMsg, _In_  WPARAM wPara
 		while (strinfo.substr(strstart, 1) != wstring(L" ")) strstart++;
 		strinfo = strinfo.substr(strstart);
 	}
-	SetEnvironmentVariableW(varname.c_str(), strinfo.c_str());
+	SetEnvironmentVariableW(lockvarname.c_str(), strinfo.c_str());
 	return 0;
 }
 void makewindow(wstring tag)
@@ -439,17 +445,24 @@ void image(wchar_t *CmdLine)
 	match(0, L"show")
 	{
 		imageres *hRes = getres(argv[1]);
-		match(1, L"cmd") {}
-	else hRes->needupdate = 1;
-	thread windowtask(makewindow, wstring(argv[1]));
-	windowtask.detach();
-	Sleep(20);
+		match(1, L"cmd")
+		{ ShowWindow(hRes->hwnd, SW_SHOW); }
+	else {
+		hRes->needupdate = 1;
+		thread windowtask(makewindow, wstring(argv[1]));
+		windowtask.detach();
+		Sleep(20);
+	}
 	}
 	match(0, L"hide")
 	{
 		imageres *hRes = getres(argv[1]);
+		match(1, L"cmd")
+		{ ShowWindow(hRes->hwnd, SW_HIDE); }
+	else {
 		hRes->needupdate = 0;
-		ShowWindow(hRes->hwnd, SW_HIDE);
+		DestroyWindow(hRes->hwnd);
+	}
 	}
 	match(0, L"target") //更改绘图目标
 	{
@@ -522,6 +535,13 @@ void image(wchar_t *CmdLine)
 		hRes->h = wtoi(argv[3]);
 	}
 	hRes->regioninit(argv[1], hRes->w, hRes->h);
+	//手动窗口更新
+	hOldTarget = hTarget;hTarget = getres(argv[1]);
+	if (hTarget->needupdate == 1)
+	{
+		HRGN hRgn = CreateRectRgn(0, 0, hRes->w, hRes->h);
+		SetWindowRgn(hTarget->hwnd, hRgn, true);
+	}
 	}
 	match(0, L"cls")
 	{
@@ -535,6 +555,8 @@ void image(wchar_t *CmdLine)
 	match(0, L"rotate")
 	{
 		rotateres(argv);
+		//手动窗口更新
+		hOldTarget = hTarget; hTarget = getres(argv[1]);
 	}
 	match(0, L"draw")
 	{
@@ -845,7 +867,12 @@ void image(wchar_t *CmdLine)
 		HANDLE pBuffer = ::MapViewOfFile(hMap, FILE_MAP_ALL_ACCESS, 0, 0, 0);
 		SetEnvironmentVariableW(argv[1], (wchar_t*)pBuffer);
 	}
-	if (hTarget->needupdate) InvalidateRect(hTarget->hwnd, NULL, 0);
+	match(0, L"getmsg")
+	{
+		imageres * hRes = getres(argv[1]);
+		SendMessageW(hRes->hwnd, WM_GETMSG, 0, 0);
+	}
+	if (hTarget->needupdate == 1) InvalidateRect(hTarget->hwnd, NULL, 0);
 	if (hOldTarget != nullptr) {
 		hTarget = hOldTarget;
 		hOldTarget = nullptr;

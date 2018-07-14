@@ -11,10 +11,9 @@ set image=[box] draw bin 100 100
 rem set image=hide cmd
 set box.wm= 
 :loop
+set image=getmsg box
 if not "!box.wm!"==" " for %%a in (!box.wm!) do (
-	for /f "tokens=1 delims=." %%b in ("%%a") do if [%%b]==[WM_DESTROY] (exit)
 	ECHO %%a
+ if "%%a"=="WM_DESTROY" exit
 )
-set box.wm= 
 goto loop
-pause
