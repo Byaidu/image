@@ -1,8 +1,11 @@
 ﻿  image.cpp
+c:\users\apple\source\repos\image\image\region.hpp : warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+c:\users\apple\source\repos\image\image\keydef.hpp : warning C4819: 该文件包含不能在当前代码页(936)中表示的字符。请将该文件保存为 Unicode 格式以防止数据丢失
+image.cpp(1096): warning C4018: “<”: 有符号/无符号不匹配
     正在创建库 C:\Users\apple\source\repos\image\Release\image.lib 和对象 C:\Users\apple\source\repos\image\Release\image.exp
   正在生成代码
-  1 of 1144 functions ( 0.1%) were compiled, the rest were copied from previous compilation.
-    0 functions were new in current compilation
-    1 functions had inline decision re-evaluated but remain unchanged
+  518 of 1130 functions (45.8%) were compiled, the rest were copied from previous compilation.
+    420 functions were new in current compilation
+    56 functions had inline decision re-evaluated but remain unchanged
   已完成代码的生成
   image.vcxproj -> C:\Users\apple\source\repos\image\Release\image.dll
