@@ -1,4 +1,6 @@
-## 由gtr-0000维护的可用版本：https://github.com/gtr-0000/image
+# Image
+
+请转至由gtr-0000维护的[可用版本](https://github.com/gtr-0000/image)
 
 关于本文档
 ----------
