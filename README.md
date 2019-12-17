@@ -1,4 +1,6 @@
-﻿关于本文档
+#https://github.com/gtr-0000/image
+
+关于本文档
 ----------
 
 作者：bbaa -Te Studio
